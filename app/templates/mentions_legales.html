@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block titre %}Mentions légales{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <h1 class="fw-bold mb-4">Mentions légales</h1>
+
+      <section class="mb-4" aria-labelledby="ml-editeur">
+        <h2 id="ml-editeur" class="h4 fw-bold border-bottom pb-2">Éditeur du site</h2>
+        <p>
+          <strong>Vite &amp; Gourmand</strong><br>
+          Entreprise individuelle<br>
+          Siège social : Bordeaux (33000), France<br>
+          E-mail : contact@viteetsourmand.fr<br>
+          Directeurs de la publication : Julie et José
+        </p>
+      </section>
+
+      <section class="mb-4" aria-labelledby="ml-hebergement">
+        <h2 id="ml-hebergement" class="h4 fw-bold border-bottom pb-2">Hébergement</h2>
+        <p>
+          Ce site est hébergé par un prestataire tiers. Les coordonnées de l'hébergeur
+          sont disponibles sur simple demande à l'adresse e-mail ci-dessus.
+        </p>
+      </section>
+
+      <section class="mb-4" aria-labelledby="ml-propriete">
+        <h2 id="ml-propriete" class="h4 fw-bold border-bottom pb-2">Propriété intellectuelle</h2>
+        <p>
+          L'ensemble du contenu de ce site (textes, images, logos) est la propriété exclusive
+          de Vite &amp; Gourmand. Toute reproduction, même partielle, est interdite sans autorisation
+          préalable.
+        </p>
+      </section>
+
+      <section class="mb-4" aria-labelledby="ml-donnees">
+        <h2 id="ml-donnees" class="h4 fw-bold border-bottom pb-2">Protection des données personnelles (RGPD)</h2>
+        <p>
+          Conformément au Règlement Général sur la Protection des Données (RGPD), vous disposez
+          d'un droit d'accès, de rectification, de suppression et de portabilité de vos données
+          personnelles.
+        </p>
+        <p>
+          Les données collectées (nom, prénom, e-mail, téléphone, adresse) sont utilisées
+          uniquement dans le cadre du traitement de vos commandes et ne sont pas transmises
+          à des tiers.
+        </p>
+        <p>
+          Pour exercer vos droits, contactez-nous à : <a href="mailto:contact@viteetsourmand.fr">contact@viteetsourmand.fr</a>
+        </p>
+        <p>
+          Vous pouvez également vous adresser à la CNIL (<a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer">www.cnil.fr</a>)
+          en cas de réclamation.
+        </p>
+      </section>
+
+      <section aria-labelledby="ml-cookies">
+        <h2 id="ml-cookies" class="h4 fw-bold border-bottom pb-2">Cookies</h2>
+        <p>
+          Ce site utilise des cookies de session strictement nécessaires au fonctionnement
+          de l'application (authentification). Aucun cookie publicitaire ou de traçage n'est utilisé.
+        </p>
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}

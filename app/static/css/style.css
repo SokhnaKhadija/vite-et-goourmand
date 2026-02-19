@@ -1,0 +1,167 @@
+/* ════════════════════════════════════════════════
+   Vite & Gourmand — Feuille de style principale
+   Palette : violet #6f42c1 (couleur principale)
+════════════════════════════════════════════════ */
+
+/* ── Variables ─────────────────────────────────── */
+:root {
+  --veg-color: #6f42c1;
+  --veg-color-dark: #5a32a3;
+  --veg-color-light: #e9e3f8;
+  --font-body: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Base ───────────────────────────────────────── */
+body {
+  font-family: var(--font-body);
+  color: #333;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+}
+
+/* ── Couleurs Bootstrap personnalisées ─────────── */
+.bg-veg { background-color: var(--veg-color) !important; }
+.text-veg { color: var(--veg-color) !important; }
+.border-veg { border-color: var(--veg-color) !important; }
+
+.btn-veg {
+  background-color: var(--veg-color);
+  color: #fff;
+  border-color: var(--veg-color);
+  transition: background-color 0.2s ease;
+}
+.btn-veg:hover,
+.btn-veg:focus {
+  background-color: var(--veg-color-dark);
+  border-color: var(--veg-color-dark);
+  color: #fff;
+}
+.btn-veg:focus {
+  box-shadow: 0 0 0 0.25rem rgba(111, 66, 193, 0.35);
+}
+
+/* ── Liens ──────────────────────────────────────── */
+a { color: var(--veg-color); }
+a:hover { color: var(--veg-color-dark); }
+.hover-white:hover { color: #fff !important; }
+
+/* ── Navbar ─────────────────────────────────────── */
+.navbar {
+  z-index: 1030;
+}
+
+/* ── Section héros ──────────────────────────────── */
+.hero-section {
+  background: linear-gradient(135deg, var(--veg-color) 0%, #4a1d96 100%);
+  min-height: 380px;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Cartes ─────────────────────────────────────── */
+.card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+}
+
+/* ── Timeline (suivi de commande) ───────────────── */
+.timeline {
+  position: relative;
+  padding-left: 24px;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background: #dee2e6;
+}
+.timeline-item {
+  position: relative;
+  padding-bottom: 18px;
+}
+.timeline-item:last-child {
+  padding-bottom: 0;
+}
+.timeline-marker {
+  position: absolute;
+  left: -20px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #dee2e6;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px #dee2e6;
+}
+.timeline-item-active .timeline-marker {
+  background: var(--veg-color);
+  box-shadow: 0 0 0 2px var(--veg-color);
+}
+
+/* ── Accessibility : focus visible ──────────────── */
+:focus-visible {
+  outline: 3px solid var(--veg-color);
+  outline-offset: 2px;
+}
+
+/* Skip link (accessibilité) */
+.skip-link {
+  position: absolute;
+  top: -50px;
+  left: 0;
+  background: var(--veg-color);
+  color: #fff;
+  padding: 8px 16px;
+  z-index: 9999;
+  border-radius: 0 0 4px 0;
+  transition: top 0.2s;
+}
+.skip-link:focus {
+  top: 0;
+}
+
+/* ── Badges nav ─────────────────────────────────── */
+.nav-link.active {
+  font-weight: 600;
+}
+
+/* ── Formulaires ────────────────────────────────── */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--veg-color);
+  box-shadow: 0 0 0 0.2rem rgba(111, 66, 193, 0.25);
+}
+
+/* ── Pied de page ───────────────────────────────── */
+footer {
+  font-size: 0.9rem;
+}
+
+/* ── Responsive images ──────────────────────────── */
+.object-fit-cover {
+  object-fit: cover;
+}
+
+/* ── Spinner de chargement ──────────────────────── */
+.spinner-border.text-veg {
+  color: var(--veg-color) !important;
+}
+
+/* ── Menus — carte filtre ───────────────────────── */
+@media (max-width: 991.98px) {
+  .sticky-top {
+    position: static !important;
+  }
+}

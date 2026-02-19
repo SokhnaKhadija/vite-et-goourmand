@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block titre %}Créer un compte{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+      <div class="card border-0 shadow">
+        <div class="card-body p-4">
+          <h1 class="h3 fw-bold text-center mb-1">Créer un compte</h1>
+          <p class="text-muted text-center small mb-4">Rejoignez Vite &amp; Gourmand</p>
+
+          <form method="post" action="{{ url_for('auth.inscription') }}" novalidate>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="prenom" class="form-label fw-semibold">Prénom <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="text" class="form-control" id="prenom" name="prenom"
+                       required autocomplete="given-name" aria-required="true">
+              </div>
+              <div class="col-md-6">
+                <label for="nom" class="form-label fw-semibold">Nom <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="text" class="form-control" id="nom" name="nom"
+                       required autocomplete="family-name" aria-required="true">
+              </div>
+              <div class="col-12">
+                <label for="email" class="form-label fw-semibold">Adresse e-mail <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="email" class="form-control" id="email" name="email"
+                       placeholder="votre@email.fr" required autocomplete="email"
+                       aria-required="true">
+              </div>
+              <div class="col-12">
+                <label for="telephone" class="form-label fw-semibold">Numéro de téléphone (GSM) <span class="text-danger" aria-hidden="true">*</span></label>
+                <input type="tel" class="form-control" id="telephone" name="telephone"
+                       placeholder="0600000000" required autocomplete="tel"
+                       aria-required="true">
+              </div>
+              <div class="col-12">
+                <label for="adresse" class="form-label fw-semibold">Adresse postale</label>
+                <input type="text" class="form-control" id="adresse" name="adresse"
+                       placeholder="1 rue des Saveurs" autocomplete="street-address">
+              </div>
+              <div class="col-md-6">
+                <label for="ville" class="form-label fw-semibold">Ville</label>
+                <input type="text" class="form-control" id="ville" name="ville"
+                       placeholder="Bordeaux" autocomplete="address-level2">
+              </div>
+              <div class="col-md-6">
+                <label for="code_postal" class="form-label fw-semibold">Code postal</label>
+                <input type="text" class="form-control" id="code_postal" name="code_postal"
+                       placeholder="33000" autocomplete="postal-code" maxlength="10">
+              </div>
+              <div class="col-12">
+                <label for="mot_de_passe" class="form-label fw-semibold">
+                  Mot de passe <span class="text-danger" aria-hidden="true">*</span>
+                </label>
+                <div class="input-group">
+                  <input type="password" class="form-control" id="mot_de_passe" name="mot_de_passe"
+                         required autocomplete="new-password" aria-required="true"
+                         aria-describedby="aide-mdp">
+                  <button class="btn btn-outline-secondary" type="button"
+                          onclick="toggleMDP('mot_de_passe', this)"
+                          aria-label="Afficher/masquer le mot de passe">
+                    <i class="bi bi-eye" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <div id="aide-mdp" class="form-text">
+                  Minimum 10 caractères avec au moins : une majuscule, une minuscule, un chiffre et un caractère spécial.
+                </div>
+              </div>
+              <div class="col-12">
+                <label for="confirmation" class="form-label fw-semibold">Confirmer le mot de passe <span class="text-danger" aria-hidden="true">*</span></label>
+                <div class="input-group">
+                  <input type="password" class="form-control" id="confirmation" name="confirmation"
+                         required autocomplete="new-password" aria-required="true">
+                  <button class="btn btn-outline-secondary" type="button"
+                          onclick="toggleMDP('confirmation', this)"
+                          aria-label="Afficher/masquer la confirmation">
+                    <i class="bi bi-eye" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="consentement"
+                         name="consentement" required aria-required="true">
+                  <label class="form-check-label small" for="consentement">
+                    J'accepte la <a href="{{ url_for('main.mentions_legales') }}" target="_blank">politique de confidentialité</a>
+                    et les <a href="{{ url_for('main.cgv') }}" target="_blank">conditions générales de vente</a>.
+                    <span class="text-danger" aria-hidden="true">*</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-veg w-100 mt-4">
+              <i class="bi bi-person-plus me-2" aria-hidden="true"></i>Créer mon compte
+            </button>
+          </form>
+
+          <hr>
+          <p class="text-center text-muted small mb-0">
+            Déjà un compte ?
+            <a href="{{ url_for('auth.connexion') }}" class="text-veg fw-semibold">Se connecter</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block titre %}{{ menu.titre }}{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <nav aria-label="Fil d'Ariane">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('main.accueil') }}">Accueil</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('menus.liste') }}">Nos menus</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ menu.titre }}</li>
+    </ol>
+  </nav>
+
+  <div class="row g-5">
+    <!-- Galerie -->
+    <div class="col-lg-5">
+      {% if menu.images %}
+      <div id="galerieMenu" class="carousel slide shadow rounded" data-bs-ride="carousel"
+           aria-label="Galerie de {{ menu.titre }}">
+        <div class="carousel-inner">
+          {% for img in menu.images %}
+          <div class="carousel-item {% if loop.first %}active{% endif %}">
+            <img src="{{ url_for('static', filename=img.chemin) }}"
+                 class="d-block w-100 object-fit-cover rounded"
+                 style="max-height:400px"
+                 alt="{{ menu.titre }} — photo {{ loop.index }}">
+          </div>
+          {% endfor %}
+        </div>
+        {% if menu.images|length > 1 %}
+        <button class="carousel-control-prev" type="button" data-bs-target="#galerieMenu" data-bs-slide="prev">
+          <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Précédent</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#galerieMenu" data-bs-slide="next">
+          <span class="carousel-control-next-icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Suivant</span>
+        </button>
+        {% endif %}
+      </div>
+      {% else %}
+      <div class="bg-light rounded d-flex align-items-center justify-content-center shadow"
+           style="height:300px" role="img" aria-label="Aucune image disponible">
+        <i class="bi bi-image text-muted" style="font-size:4rem" aria-hidden="true"></i>
+      </div>
+      {% endif %}
+
+      <!-- Badges -->
+      <div class="mt-3 d-flex gap-2 flex-wrap">
+        <span class="badge bg-veg fs-6">{{ menu.theme.libelle }}</span>
+        <span class="badge bg-secondary fs-6">{{ menu.regime.libelle }}</span>
+        {% if menu.stock <= 5 and menu.stock > 0 %}
+        <span class="badge bg-warning text-dark fs-6">Plus que {{ menu.stock }} disponible(s)</span>
+        {% elif menu.stock == 0 %}
+        <span class="badge bg-danger fs-6">Épuisé</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Informations -->
+    <div class="col-lg-7">
+      <h1 class="fw-bold mb-2">{{ menu.titre }}</h1>
+      {% if menu.description %}
+      <p class="lead text-muted mb-4">{{ menu.description }}</p>
+      {% endif %}
+
+      <!-- Prix et personnes -->
+      <div class="card border-veg mb-4">
+        <div class="card-body d-flex justify-content-around text-center">
+          <div>
+            <i class="bi bi-people text-veg d-block" style="font-size:1.5rem" aria-hidden="true"></i>
+            <strong>{{ menu.nb_personnes_min }} personnes</strong>
+            <div class="text-muted small">minimum</div>
+          </div>
+          <div class="vr"></div>
+          <div>
+            <i class="bi bi-currency-euro text-veg d-block" style="font-size:1.5rem" aria-hidden="true"></i>
+            <strong class="fs-4">{{ "%.2f"|format(menu.prix_base) }} €</strong>
+            <div class="text-muted small">pour {{ menu.nb_personnes_min }} pers.</div>
+          </div>
+          <div class="vr"></div>
+          <div>
+            <i class="bi bi-tag text-veg d-block" style="font-size:1.5rem" aria-hidden="true"></i>
+            <strong>{{ "%.2f"|format(menu.prix_par_personne) }} €</strong>
+            <div class="text-muted small">par personne</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Réduction info -->
+      <div class="alert alert-info d-flex align-items-center mb-4" role="note">
+        <i class="bi bi-percent me-2 flex-shrink-0" aria-hidden="true"></i>
+        <span>
+          <strong>Réduction de 10%</strong> pour toute commande avec
+          {{ menu.nb_personnes_min + 5 }} personnes ou plus.
+        </span>
+      </div>
+
+      <!-- Conditions du menu (mise en évidence obligatoire) -->
+      {% if menu.conditions %}
+      <div class="alert alert-warning border-warning" role="alert" aria-live="assertive">
+        <h2 class="h6 fw-bold mb-2">
+          <i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>
+          Conditions du menu — À lire attentivement
+        </h2>
+        <p class="mb-0">{{ menu.conditions }}</p>
+      </div>
+      {% endif %}
+
+      <!-- Liste des plats -->
+      <div class="mb-4">
+        {% if menu.entrees %}
+        <h2 class="h5 fw-bold border-bottom pb-2 mb-3">
+          <i class="bi bi-cup-hot text-veg me-2" aria-hidden="true"></i>Entrées
+        </h2>
+        <ul class="list-group list-group-flush mb-3">
+          {% for plat in menu.entrees %}
+          <li class="list-group-item px-0">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <strong>{{ plat.titre }}</strong>
+                {% if plat.description %}<br><small class="text-muted">{{ plat.description }}</small>{% endif %}
+                {% if plat.allergenes %}
+                <div class="mt-1">
+                  {% for a in plat.allergenes %}
+                  <span class="badge bg-light text-dark border me-1" title="Allergène">{{ a.libelle }}</span>
+                  {% endfor %}
+                </div>
+                {% endif %}
+              </div>
+              {% if plat.photo %}
+              <img src="{{ url_for('static', filename=plat.photo) }}"
+                   alt="{{ plat.titre }}" class="rounded ms-3"
+                   style="width:60px;height:60px;object-fit:cover">
+              {% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if menu.plats_principaux %}
+        <h2 class="h5 fw-bold border-bottom pb-2 mb-3">
+          <i class="bi bi-basket text-veg me-2" aria-hidden="true"></i>Plats
+        </h2>
+        <ul class="list-group list-group-flush mb-3">
+          {% for plat in menu.plats_principaux %}
+          <li class="list-group-item px-0">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <strong>{{ plat.titre }}</strong>
+                {% if plat.description %}<br><small class="text-muted">{{ plat.description }}</small>{% endif %}
+                {% if plat.allergenes %}
+                <div class="mt-1">
+                  {% for a in plat.allergenes %}
+                  <span class="badge bg-light text-dark border me-1">{{ a.libelle }}</span>
+                  {% endfor %}
+                </div>
+                {% endif %}
+              </div>
+              {% if plat.photo %}
+              <img src="{{ url_for('static', filename=plat.photo) }}"
+                   alt="{{ plat.titre }}" class="rounded ms-3"
+                   style="width:60px;height:60px;object-fit:cover">
+              {% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if menu.desserts %}
+        <h2 class="h5 fw-bold border-bottom pb-2 mb-3">
+          <i class="bi bi-cake text-veg me-2" aria-hidden="true"></i>Desserts
+        </h2>
+        <ul class="list-group list-group-flush mb-3">
+          {% for plat in menu.desserts %}
+          <li class="list-group-item px-0">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <strong>{{ plat.titre }}</strong>
+                {% if plat.description %}<br><small class="text-muted">{{ plat.description }}</small>{% endif %}
+                {% if plat.allergenes %}
+                <div class="mt-1">
+                  {% for a in plat.allergenes %}
+                  <span class="badge bg-light text-dark border me-1">{{ a.libelle }}</span>
+                  {% endfor %}
+                </div>
+                {% endif %}
+              </div>
+              {% if plat.photo %}
+              <img src="{{ url_for('static', filename=plat.photo) }}"
+                   alt="{{ plat.titre }}" class="rounded ms-3"
+                   style="width:60px;height:60px;object-fit:cover">
+              {% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+
+      <!-- Bouton Commander -->
+      {% if menu.stock > 0 %}
+        {% if current_user.is_authenticated %}
+        <a href="{{ url_for('commandes.commander', menu_id=menu.id) }}"
+           class="btn btn-veg btn-lg w-100">
+          <i class="bi bi-bag-plus me-2" aria-hidden="true"></i>Commander ce menu
+        </a>
+        {% else %}
+        <div class="alert alert-secondary text-center">
+          <p class="mb-2">
+            <i class="bi bi-lock me-1" aria-hidden="true"></i>
+            Pour commander, vous devez être connecté.
+          </p>
+          <a href="{{ url_for('auth.connexion', next=request.url) }}" class="btn btn-veg me-2">
+            <i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>Se connecter
+          </a>
+          <a href="{{ url_for('auth.inscription') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-person-plus me-1" aria-hidden="true"></i>Créer un compte
+          </a>
+        </div>
+        {% endif %}
+      {% else %}
+      <button class="btn btn-secondary btn-lg w-100" disabled aria-disabled="true">
+        <i class="bi bi-x-circle me-2" aria-hidden="true"></i>Menu temporairement indisponible
+      </button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

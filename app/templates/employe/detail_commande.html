@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block titre %}Commande {{ commande.numero }}{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <nav aria-label="Fil d'Ariane">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('employe.commandes') }}">Commandes</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ commande.numero }}</li>
+    </ol>
+  </nav>
+
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <!-- Infos commande -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-veg text-white fw-semibold">
+          Commande {{ commande.numero }}
+        </div>
+        <div class="card-body p-4">
+          <dl class="row mb-0">
+            <dt class="col-5">Client</dt>
+            <dd class="col-7">{{ commande.utilisateur.prenom }} {{ commande.utilisateur.nom }}
+              <br><small class="text-muted">{{ commande.utilisateur.email }} — {{ commande.utilisateur.telephone }}</small>
+            </dd>
+            <dt class="col-5">Menu</dt><dd class="col-7">{{ commande.menu.titre }}</dd>
+            <dt class="col-5">Date prestation</dt>
+            <dd class="col-7">{{ commande.date_prestation.strftime('%d/%m/%Y') }} à {{ commande.heure_livraison }}</dd>
+            <dt class="col-5">Lieu</dt>
+            <dd class="col-7">{{ commande.adresse_livraison }}, {{ commande.ville_livraison }}</dd>
+            <dt class="col-5">Personnes</dt><dd class="col-7">{{ commande.nb_personnes }}</dd>
+            <dt class="col-5">Matériel prêté</dt>
+            <dd class="col-7">
+              {% if commande.pret_materiel %}
+              <span class="badge bg-warning text-dark">Oui</span>
+              {% else %}
+              <span class="badge bg-secondary">Non</span>
+              {% endif %}
+            </dd>
+            <dt class="col-5">Prix menu</dt><dd class="col-7">{{ "%.2f"|format(commande.prix_menu) }} €</dd>
+            <dt class="col-5">Frais livraison</dt><dd class="col-7">{{ "%.2f"|format(commande.prix_livraison) }} €</dd>
+            <dt class="col-5 fw-bold">Total</dt>
+            <dd class="col-7 fw-bold text-veg">{{ "%.2f"|format(commande.prix_total) }} €</dd>
+          </dl>
+        </div>
+      </div>
+
+      <!-- Changer statut -->
+      {% if commande.statut not in ['terminee', 'annulee'] %}
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header fw-semibold">
+          <i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i>Mettre à jour le statut
+        </div>
+        <div class="card-body p-4">
+          <form method="post" action="{{ url_for('employe.changer_statut', commande_id=commande.id) }}" novalidate>
+            <div class="mb-3">
+              <label for="statut" class="form-label fw-semibold">Nouveau statut</label>
+              <select class="form-select" id="statut" name="statut" onchange="afficherMotif(this.value)">
+                {% for val, libelle in statuts %}
+                {% if val not in ['en_attente'] %}
+                <option value="{{ val }}" {% if val == commande.statut %}selected{% endif %}>{{ libelle }}</option>
+                {% endif %}
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Champs annulation -->
+            <div id="bloc-annulation" class="d-none">
+              <div class="alert alert-warning small mb-3">
+                <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+                Vous devez avoir contacté le client avant d'annuler.
+              </div>
+              <div class="mb-3">
+                <label for="mode_contact" class="form-label fw-semibold">Mode de contact utilisé</label>
+                <select class="form-select" id="mode_contact" name="mode_contact">
+                  <option value="gsm">Appel téléphonique (GSM)</option>
+                  <option value="mail">E-mail</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="motif_annulation" class="form-label fw-semibold">Motif d'annulation</label>
+                <textarea class="form-control" id="motif_annulation" name="motif_annulation" rows="3"
+                          placeholder="Expliquez la raison de l'annulation…"></textarea>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-veg">
+              <i class="bi bi-check2 me-2" aria-hidden="true"></i>Valider
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Suivi -->
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header fw-semibold">
+          <i class="bi bi-clock-history me-2" aria-hidden="true"></i>Historique
+        </div>
+        <div class="card-body p-4">
+          <ol class="list-unstyled timeline">
+            {% for s in commande.suivis %}
+            <li class="timeline-item {% if loop.last %}timeline-item-active{% endif %}">
+              <div class="timeline-marker"></div>
+              <div class="ms-3">
+                <strong>{{ s.statut_libelle }}</strong>
+                <div class="text-muted small">{{ s.date_modification.strftime('%d/%m/%Y à %H:%M') }}</div>
+              </div>
+            </li>
+            {% endfor %}
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function afficherMotif(statut) {
+  const bloc = document.getElementById('bloc-annulation');
+  bloc.classList.toggle('d-none', statut !== 'annulee');
+}
+// Init
+afficherMotif(document.getElementById('statut').value);
+</script>
+{% endblock %}

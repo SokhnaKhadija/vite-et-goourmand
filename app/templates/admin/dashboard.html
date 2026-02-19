@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block titre %}Administration{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <h1 class="fw-bold mb-4">
+    <i class="bi bi-shield-lock me-2 text-veg" aria-hidden="true"></i>Administration
+  </h1>
+
+  <!-- Statistiques globales -->
+  <div class="row g-4 mb-5">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm text-center p-4 border-top border-4 border-veg">
+        <div class="card-body">
+          <i class="bi bi-bag-check text-veg display-4" aria-hidden="true"></i>
+          <h2 class="h3 fw-bold mt-2">{{ nb_commandes }}</h2>
+          <p class="text-muted mb-0">Commandes totales</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm text-center p-4 border-top border-4 border-primary">
+        <div class="card-body">
+          <i class="bi bi-people text-primary display-4" aria-hidden="true"></i>
+          <h2 class="h3 fw-bold mt-2">{{ nb_utilisateurs }}</h2>
+          <p class="text-muted mb-0">Clients inscrits</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Accès rapides -->
+  <div class="row g-4 mb-5">
+    <div class="col-md-3">
+      <a href="{{ url_for('admin.employes') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm text-center p-4 h-100">
+          <div class="card-body">
+            <i class="bi bi-person-badge text-veg display-4" aria-hidden="true"></i>
+            <h2 class="h5 fw-bold mt-2">Employés</h2>
+            <p class="text-muted small">Gérer les comptes</p>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a href="{{ url_for('admin.statistiques') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm text-center p-4 h-100">
+          <div class="card-body">
+            <i class="bi bi-bar-chart text-veg display-4" aria-hidden="true"></i>
+            <h2 class="h5 fw-bold mt-2">Statistiques</h2>
+            <p class="text-muted small">CA et commandes par menu</p>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a href="{{ url_for('employe.commandes') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm text-center p-4 h-100">
+          <div class="card-body">
+            <i class="bi bi-inbox text-veg display-4" aria-hidden="true"></i>
+            <h2 class="h5 fw-bold mt-2">Commandes</h2>
+            <p class="text-muted small">Gestion des commandes</p>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-3">
+      <a href="{{ url_for('employe.gestion_menus') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm text-center p-4 h-100">
+          <div class="card-body">
+            <i class="bi bi-journal-text text-veg display-4" aria-hidden="true"></i>
+            <h2 class="h5 fw-bold mt-2">Menus</h2>
+            <p class="text-muted small">Gérer les menus</p>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- Graphique MongoDB -->
+  {% if stats_menus %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-header fw-semibold">
+      <i class="bi bi-bar-chart me-2" aria-hidden="true"></i>
+      Commandes par menu (données temps réel)
+    </div>
+    <div class="card-body p-4">
+      <canvas id="graphiqueMenus" style="max-height:350px"
+              aria-label="Graphique du nombre de commandes par menu"></canvas>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if stats_menus %}
+<script>
+const labels = {{ stats_menus | map(attribute='menu_titre') | list | tojson }};
+const data = {{ stats_menus | map(attribute='count') | list | tojson }};
+
+new Chart(document.getElementById('graphiqueMenus'), {
+  type: 'bar',
+  data: {
+    labels: labels,
+    datasets: [{
+      label: 'Nombre de commandes',
+      data: data,
+      backgroundColor: '#6f42c1',
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+    },
+    scales: {
+      y: { beginAtZero: true, ticks: { stepSize: 1 } }
+    }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block titre %}{{ 'Modifier' if plat else 'Nouveau' }} plat{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+      <h1 class="fw-bold mb-4">{{ 'Modifier le plat' if plat else 'Nouveau plat' }}</h1>
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <form method="post" enctype="multipart/form-data" novalidate>
+            <div class="mb-3">
+              <label for="titre" class="form-label fw-semibold">Nom du plat <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="titre" name="titre"
+                     value="{{ plat.titre if plat else '' }}" required>
+            </div>
+            <div class="mb-3">
+              <label for="type_plat" class="form-label fw-semibold">Type <span class="text-danger">*</span></label>
+              <select class="form-select" id="type_plat" name="type_plat" required>
+                <option value="entree" {% if plat and plat.type_plat == 'entree' %}selected{% endif %}>Entrée</option>
+                <option value="plat" {% if plat and plat.type_plat == 'plat' %}selected{% endif %}>Plat principal</option>
+                <option value="dessert" {% if plat and plat.type_plat == 'dessert' %}selected{% endif %}>Dessert</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="description" class="form-label fw-semibold">Description</label>
+              <textarea class="form-control" id="description" name="description" rows="3">{{ plat.description if plat else '' }}</textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Allergènes</label>
+              <div class="row g-2">
+                {% for a in allergenes_liste %}
+                <div class="col-md-6">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="allergenes"
+                           value="{{ a.id }}" id="allergene_{{ a.id }}"
+                           {% if plat and a in plat.allergenes %}checked{% endif %}>
+                    <label class="form-check-label small" for="allergene_{{ a.id }}">{{ a.libelle }}</label>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="photo" class="form-label fw-semibold">Photo</label>
+              {% if plat and plat.photo %}
+              <div class="mb-2">
+                <img src="{{ url_for('static', filename=plat.photo) }}"
+                     alt="{{ plat.titre }}" class="img-thumbnail" style="max-height:120px">
+              </div>
+              {% endif %}
+              <input type="file" class="form-control" id="photo" name="photo" accept="image/*">
+            </div>
+            <div class="d-flex gap-2 mt-4">
+              <button type="submit" class="btn btn-veg">
+                <i class="bi bi-check2 me-2" aria-hidden="true"></i>Enregistrer
+              </button>
+              <a href="{{ url_for('employe.gestion_plats') }}" class="btn btn-outline-secondary">Annuler</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block titre %}Gestion des commandes{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="fw-bold mb-0">Commandes</h1>
+    <a href="{{ url_for('employe.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Tableau de bord
+    </a>
+  </div>
+
+  <!-- Filtres -->
+  <form method="get" class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-3">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label for="statut" class="form-label small fw-semibold">Filtrer par statut</label>
+          <select class="form-select form-select-sm" id="statut" name="statut">
+            <option value="">Tous les statuts</option>
+            {% for val, libelle in statuts %}
+            <option value="{{ val }}" {% if val == statut_filtre %}selected{% endif %}>{{ libelle }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label for="client" class="form-label small fw-semibold">Rechercher un client</label>
+          <input type="text" class="form-control form-control-sm" id="client" name="client"
+                 placeholder="Nom, prénom ou email" value="{{ client_filtre }}">
+        </div>
+        <div class="col-md-auto">
+          <button type="submit" class="btn btn-veg btn-sm">
+            <i class="bi bi-search me-1" aria-hidden="true"></i>Filtrer
+          </button>
+          <a href="{{ url_for('employe.commandes') }}" class="btn btn-outline-secondary btn-sm ms-1">
+            <i class="bi bi-x me-1" aria-hidden="true"></i>Réinitialiser
+          </a>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  {% if commandes %}
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th scope="col">N°</th>
+          <th scope="col">Client</th>
+          <th scope="col">Menu</th>
+          <th scope="col">Date prestation</th>
+          <th scope="col">Personnes</th>
+          <th scope="col">Total</th>
+          <th scope="col">Statut</th>
+          <th scope="col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in commandes %}
+        {% set couleur = {
+          'en_attente': 'warning text-dark',
+          'accepte': 'primary',
+          'en_preparation': 'info text-dark',
+          'en_cours_livraison': 'info',
+          'livre': 'success',
+          'en_attente_materiel': 'warning',
+          'terminee': 'success',
+          'annulee': 'danger'
+        } %}
+        <tr>
+          <td><code>{{ c.numero }}</code></td>
+          <td>{{ c.utilisateur.prenom }} {{ c.utilisateur.nom }}</td>
+          <td>{{ c.menu.titre }}</td>
+          <td>{{ c.date_prestation.strftime('%d/%m/%Y') }}</td>
+          <td>{{ c.nb_personnes }}</td>
+          <td class="fw-semibold">{{ "%.2f"|format(c.prix_total) }} €</td>
+          <td>
+            <span class="badge bg-{{ couleur.get(c.statut, 'secondary') }}">
+              {{ c.statut_libelle }}
+            </span>
+          </td>
+          <td>
+            <a href="{{ url_for('employe.detail_commande', commande_id=c.id) }}"
+               class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-eye" aria-hidden="true"></i>
+              <span class="visually-hidden">Voir</span>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="text-center py-5">
+    <i class="bi bi-inbox display-4 text-muted" aria-hidden="true"></i>
+    <p class="mt-3 text-muted">Aucune commande trouvée.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titre %}Laisser un avis{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-6">
+      <h1 class="fw-bold mb-1">Votre avis</h1>
+      <p class="text-muted mb-4">Commande : <strong>{{ commande.menu.titre }}</strong> — {{ commande.numero }}</p>
+
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <form method="post" novalidate>
+            <div class="mb-4">
+              <fieldset>
+                <legend class="form-label fw-semibold">Note <span class="text-danger" aria-hidden="true">*</span></legend>
+                <div class="d-flex gap-2 flex-wrap" role="radiogroup" aria-label="Note de 1 à 5">
+                  {% for i in range(1, 6) %}
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="note"
+                           id="note{{ i }}" value="{{ i }}" required
+                           {% if loop.last %}checked{% endif %}>
+                    <label class="form-check-label" for="note{{ i }}">
+                      {{ i }} <i class="bi bi-star-fill text-warning" aria-hidden="true"></i>
+                    </label>
+                  </div>
+                  {% endfor %}
+                </div>
+              </fieldset>
+            </div>
+            <div class="mb-4">
+              <label for="commentaire" class="form-label fw-semibold">Commentaire</label>
+              <textarea class="form-control" id="commentaire" name="commentaire"
+                        rows="5" placeholder="Partagez votre expérience…"></textarea>
+            </div>
+            <button type="submit" class="btn btn-veg w-100">
+              <i class="bi bi-send me-2" aria-hidden="true"></i>Soumettre mon avis
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

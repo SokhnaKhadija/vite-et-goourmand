@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block titre %}Nouveau mot de passe{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-5">
+      <div class="card border-0 shadow">
+        <div class="card-body p-4">
+          <h1 class="h3 fw-bold text-center mb-4">Définir un nouveau mot de passe</h1>
+          <form method="post" novalidate>
+            <div class="mb-3">
+              <label for="mot_de_passe" class="form-label fw-semibold">Nouveau mot de passe</label>
+              <div class="input-group">
+                <input type="password" class="form-control" id="mot_de_passe" name="mot_de_passe"
+                       required autocomplete="new-password" aria-required="true"
+                       aria-describedby="aide-mdp">
+                <button class="btn btn-outline-secondary" type="button"
+                        onclick="toggleMDP('mot_de_passe', this)"
+                        aria-label="Afficher/masquer">
+                  <i class="bi bi-eye" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div id="aide-mdp" class="form-text">
+                Minimum 10 caractères : majuscule, minuscule, chiffre, caractère spécial.
+              </div>
+            </div>
+            <div class="mb-4">
+              <label for="confirmation" class="form-label fw-semibold">Confirmer le mot de passe</label>
+              <div class="input-group">
+                <input type="password" class="form-control" id="confirmation" name="confirmation"
+                       required autocomplete="new-password" aria-required="true">
+                <button class="btn btn-outline-secondary" type="button"
+                        onclick="toggleMDP('confirmation', this)"
+                        aria-label="Afficher/masquer">
+                  <i class="bi bi-eye" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-veg w-100">
+              <i class="bi bi-check2-circle me-2" aria-hidden="true"></i>Valider
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

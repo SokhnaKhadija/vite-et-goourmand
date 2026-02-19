@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% block titre %}Passer une commande{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <h1 class="fw-bold mb-1">Passer une commande</h1>
+  <p class="text-muted mb-4">Remplissez les informations ci-dessous pour finaliser votre commande.</p>
+
+  <form method="post" action="{{ url_for('commandes.commander') }}" id="form-commande" novalidate>
+
+    <!-- ── Étape 1 : Informations de livraison ── -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-veg text-white fw-semibold">
+        <i class="bi bi-1-circle me-2" aria-hidden="true"></i>Informations de livraison
+      </div>
+      <div class="card-body p-4">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Prénom</label>
+            <input type="text" class="form-control" value="{{ current_user.prenom }}" disabled
+                   aria-label="Prénom (non modifiable ici)">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Nom</label>
+            <input type="text" class="form-control" value="{{ current_user.nom }}" disabled
+                   aria-label="Nom (non modifiable ici)">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">E-mail</label>
+            <input type="email" class="form-control" value="{{ current_user.email }}" disabled
+                   aria-label="Email (non modifiable ici)">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Téléphone (GSM)</label>
+            <input type="tel" class="form-control" value="{{ current_user.telephone or '' }}" disabled
+                   aria-label="Téléphone (non modifiable ici)">
+          </div>
+          <div class="col-12">
+            <label for="adresse_livraison" class="form-label fw-semibold">
+              Adresse de livraison <span class="text-danger" aria-hidden="true">*</span>
+            </label>
+            <input type="text" class="form-control" id="adresse_livraison" name="adresse_livraison"
+                   required placeholder="1 rue des Saveurs" aria-required="true">
+          </div>
+          <div class="col-md-5">
+            <label for="ville_livraison" class="form-label fw-semibold">
+              Ville <span class="text-danger" aria-hidden="true">*</span>
+            </label>
+            <input type="text" class="form-control" id="ville_livraison" name="ville_livraison"
+                   required placeholder="Bordeaux" aria-required="true"
+                   oninput="recalculerPrix()">
+            <div class="form-text" id="info-livraison"></div>
+          </div>
+          <div class="col-md-3">
+            <label for="code_postal_livraison" class="form-label fw-semibold">Code postal</label>
+            <input type="text" class="form-control" id="code_postal_livraison"
+                   name="code_postal_livraison" placeholder="33000" maxlength="10">
+          </div>
+          <div class="col-md-4">
+            <label for="date_prestation" class="form-label fw-semibold">
+              Date de prestation <span class="text-danger" aria-hidden="true">*</span>
+            </label>
+            <input type="date" class="form-control" id="date_prestation" name="date_prestation"
+                   required min="{{ today }}" aria-required="true">
+          </div>
+          <div class="col-md-4">
+            <label for="heure_livraison" class="form-label fw-semibold">
+              Heure souhaitée <span class="text-danger" aria-hidden="true">*</span>
+            </label>
+            <input type="time" class="form-control" id="heure_livraison" name="heure_livraison"
+                   required aria-required="true">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Étape 2 : Choix du menu ── -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-veg text-white fw-semibold">
+        <i class="bi bi-2-circle me-2" aria-hidden="true"></i>Choix du menu
+      </div>
+      <div class="card-body p-4">
+        <label for="menu_id" class="form-label fw-semibold">
+          Menu <span class="text-danger" aria-hidden="true">*</span>
+        </label>
+        <select class="form-select" id="menu_id" name="menu_id" required
+                aria-required="true" onchange="onMenuChange()">
+          <option value="">— Sélectionner un menu —</option>
+          {% for m in menus %}
+          <option value="{{ m.id }}"
+                  data-min="{{ m.nb_personnes_min }}"
+                  data-conditions="{{ m.conditions or '' }}"
+                  {% if m.id == menu_preselectionne_id %}selected{% endif %}>
+            {{ m.titre }} — À partir de {{ m.nb_personnes_min }} pers. / {{ "%.2f"|format(m.prix_base) }} €
+          </option>
+          {% endfor %}
+        </select>
+
+        <!-- Conditions du menu sélectionné -->
+        <div id="bloc-conditions" class="alert alert-warning mt-3 d-none" role="alert">
+          <h3 class="h6 fw-bold mb-1">
+            <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
+            Conditions du menu — À lire attentivement
+          </h3>
+          <p id="texte-conditions" class="mb-2"></p>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="conditions_acceptees"
+                   name="conditions_acceptees" required aria-required="true">
+            <label class="form-check-label fw-semibold" for="conditions_acceptees">
+              J'ai lu et j'accepte les conditions de ce menu.
+            </label>
+          </div>
+        </div>
+
+        <!-- Nombre de personnes -->
+        <div class="mt-3">
+          <label for="nb_personnes" class="form-label fw-semibold">
+            Nombre de personnes <span class="text-danger" aria-hidden="true">*</span>
+          </label>
+          <div class="input-group" style="max-width:220px">
+            <button class="btn btn-outline-secondary" type="button"
+                    onclick="changerPersonnes(-1)" aria-label="Diminuer">
+              <i class="bi bi-dash" aria-hidden="true"></i>
+            </button>
+            <input type="number" class="form-control text-center" id="nb_personnes"
+                   name="nb_personnes" value="1" min="1" required
+                   aria-required="true" oninput="recalculerPrix()">
+            <button class="btn btn-outline-secondary" type="button"
+                    onclick="changerPersonnes(1)" aria-label="Augmenter">
+              <i class="bi bi-plus" aria-hidden="true"></i>
+            </button>
+          </div>
+          <div id="info-min-personnes" class="form-text"></div>
+        </div>
+
+        <!-- Matériel prêté -->
+        <div class="form-check mt-3">
+          <input class="form-check-input" type="checkbox" id="pret_materiel" name="pret_materiel">
+          <label class="form-check-label" for="pret_materiel">
+            Du matériel sera prêté lors de cette prestation
+          </label>
+          <div class="form-text text-warning">
+            <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>
+            En cas de matériel prêté, vous disposez de 10 jours ouvrés pour le restituer.
+            Passé ce délai, 600 € vous seront facturés (voir
+            <a href="{{ url_for('main.cgv') }}" target="_blank">CGV</a>).
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Récapitulatif prix ── -->
+    <div class="card border-veg shadow-sm mb-4" id="bloc-prix" aria-live="polite">
+      <div class="card-header fw-semibold text-veg">
+        <i class="bi bi-receipt me-2" aria-hidden="true"></i>Récapitulatif du prix
+      </div>
+      <div class="card-body p-4">
+        <table class="table table-borderless mb-0">
+          <tbody>
+            <tr>
+              <td>Prix du menu</td>
+              <td class="text-end fw-semibold" id="detail-prix-menu">—</td>
+            </tr>
+            <tr>
+              <td>Frais de livraison</td>
+              <td class="text-end fw-semibold" id="detail-prix-livraison">—</td>
+            </tr>
+            <tr id="ligne-reduction" class="text-success d-none">
+              <td><i class="bi bi-percent me-1" aria-hidden="true"></i>Réduction 10%</td>
+              <td class="text-end fw-semibold">Appliquée</td>
+            </tr>
+            <tr class="border-top">
+              <td class="fw-bold fs-5">Total</td>
+              <td class="text-end fw-bold fs-5 text-veg" id="detail-total">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-veg btn-lg w-100">
+      <i class="bi bi-check2-circle me-2" aria-hidden="true"></i>Confirmer la commande
+    </button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const URL_PRIX = "{{ url_for('commandes.api_prix') }}";
+const today = new Date().toISOString().split('T')[0];
+document.getElementById('date_prestation').min = today;
+
+function onMenuChange() {
+  const select = document.getElementById('menu_id');
+  const option = select.options[select.selectedIndex];
+  const minPersonnes = parseInt(option.dataset.min) || 1;
+  const conditions = option.dataset.conditions || '';
+
+  const nbInput = document.getElementById('nb_personnes');
+  nbInput.min = minPersonnes;
+  if (parseInt(nbInput.value) < minPersonnes) {
+    nbInput.value = minPersonnes;
+  }
+  document.getElementById('info-min-personnes').textContent = `Minimum ${minPersonnes} personne(s)`;
+
+  const blocConditions = document.getElementById('bloc-conditions');
+  const texteConditions = document.getElementById('texte-conditions');
+  if (conditions) {
+    texteConditions.textContent = conditions;
+    blocConditions.classList.remove('d-none');
+  } else {
+    blocConditions.classList.add('d-none');
+  }
+  recalculerPrix();
+}
+
+async function recalculerPrix() {
+  const menuId = document.getElementById('menu_id').value;
+  const nb = document.getElementById('nb_personnes').value;
+  const ville = document.getElementById('ville_livraison').value;
+
+  if (!menuId) return;
+
+  try {
+    const resp = await fetch(`${URL_PRIX}?menu_id=${menuId}&nb_personnes=${nb}&ville=${encodeURIComponent(ville)}`);
+    const data = await resp.json();
+
+    document.getElementById('detail-prix-menu').textContent = data.prix_menu.toFixed(2) + ' €';
+    document.getElementById('detail-prix-livraison').textContent = data.prix_livraison.toFixed(2) + ' €';
+    document.getElementById('detail-total').textContent = data.prix_total.toFixed(2) + ' €';
+
+    const ligneReduction = document.getElementById('ligne-reduction');
+    ligneReduction.classList.toggle('d-none', !data.reduction_appliquee);
+
+    const infoLivraison = document.getElementById('info-livraison');
+    if (data.prix_livraison > 0) {
+      infoLivraison.textContent = '⚠️ Frais de livraison hors Bordeaux : ' + data.prix_livraison.toFixed(2) + ' €';
+      infoLivraison.className = 'form-text text-warning';
+    } else {
+      infoLivraison.textContent = '✓ Livraison gratuite à Bordeaux';
+      infoLivraison.className = 'form-text text-success';
+    }
+  } catch(e) {
+    // Silencieux
+  }
+}
+
+function changerPersonnes(delta) {
+  const input = document.getElementById('nb_personnes');
+  const min = parseInt(input.min) || 1;
+  const val = (parseInt(input.value) || min) + delta;
+  input.value = Math.max(min, val);
+  recalculerPrix();
+}
+
+// Init si menu pré-sélectionné
+window.addEventListener('load', () => {
+  if (document.getElementById('menu_id').value) {
+    onMenuChange();
+  }
+});
+</script>
+{% endblock %}

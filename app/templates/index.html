@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block titre %}Accueil{% endblock %}
+
+{% block contenu %}
+
+<!-- ═══ Héros ═════════════════════════════════════════════════ -->
+<section class="hero-section text-white text-center py-5" aria-labelledby="titre-hero">
+  <div class="container py-4">
+    <h1 id="titre-hero" class="display-4 fw-bold mb-3">
+      <i class="bi bi-egg-fried me-2" aria-hidden="true"></i>Vite &amp; Gourmand
+    </h1>
+    <p class="lead mb-4">
+      Votre traiteur bordelais depuis 25 ans.<br>
+      Des créations culinaires pour tous vos événements.
+    </p>
+    <a href="{{ url_for('menus.liste') }}" class="btn btn-light btn-lg me-2">
+      <i class="bi bi-journal-text me-1" aria-hidden="true"></i>Découvrir nos menus
+    </a>
+    <a href="{{ url_for('main.contact') }}" class="btn btn-outline-light btn-lg">
+      <i class="bi bi-envelope me-1" aria-hidden="true"></i>Nous contacter
+    </a>
+  </div>
+</section>
+
+<!-- ═══ Présentation ══════════════════════════════════════════ -->
+<section class="py-5 bg-light" aria-labelledby="titre-presentation">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6">
+        <h2 id="titre-presentation" class="fw-bold mb-3">Notre histoire</h2>
+        <p class="lead">
+          Depuis 1999, Julie et José mettent leur passion de la cuisine au service de vos
+          événements. Installés à Bordeaux, ils vous proposent des menus gastronomiques
+          pour tous les budgets et toutes les occasions.
+        </p>
+        <p>
+          Que ce soit pour un simple repas de Noël en famille, un repas de Pâques, ou
+          un événement d'entreprise, Vite &amp; Gourmand s'adapte à vos besoins avec
+          des menus en constante évolution.
+        </p>
+        <a href="{{ url_for('menus.liste') }}" class="btn btn-veg mt-2">
+          Voir tous nos menus <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
+        </a>
+      </div>
+      <div class="col-lg-6 text-center">
+        <div class="row g-3">
+          <div class="col-6">
+            <div class="card border-0 shadow-sm h-100 text-center py-4">
+              <div class="card-body">
+                <i class="bi bi-award text-veg display-4" aria-hidden="true"></i>
+                <h3 class="h5 mt-2 fw-bold">25 ans d'expérience</h3>
+                <p class="text-muted small">Un savoir-faire éprouvé au fil du temps</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="card border-0 shadow-sm h-100 text-center py-4">
+              <div class="card-body">
+                <i class="bi bi-people text-veg display-4" aria-hidden="true"></i>
+                <h3 class="h5 mt-2 fw-bold">Équipe passionnée</h3>
+                <p class="text-muted small">Julie &amp; José à votre service</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="card border-0 shadow-sm h-100 text-center py-4">
+              <div class="card-body">
+                <i class="bi bi-geo-alt text-veg display-4" aria-hidden="true"></i>
+                <h3 class="h5 mt-2 fw-bold">Livraison à domicile</h3>
+                <p class="text-muted small">Bordeaux &amp; alentours</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="card border-0 shadow-sm h-100 text-center py-4">
+              <div class="card-body">
+                <i class="bi bi-patch-check text-veg display-4" aria-hidden="true"></i>
+                <h3 class="h5 mt-2 fw-bold">Produits frais</h3>
+                <p class="text-muted small">Sélectionnés avec soin chaque jour</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Professionnalisme ═════════════════════════════════════ -->
+<section class="py-5" aria-labelledby="titre-equipe">
+  <div class="container">
+    <h2 id="titre-equipe" class="text-center fw-bold mb-5">Notre équipe</h2>
+    <div class="row g-4 justify-content-center">
+      <div class="col-md-5">
+        <div class="card border-0 shadow text-center p-4 h-100">
+          <div class="card-body">
+            <div class="avatar-placeholder bg-veg text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                 style="width:80px;height:80px;font-size:2rem;" aria-hidden="true">
+              <i class="bi bi-person-badge"></i>
+            </div>
+            <h3 class="h5 fw-bold">Julie</h3>
+            <p class="text-muted small fw-semibold mb-2">Chef cuisinière</p>
+            <p class="text-muted small">
+              Passionnée de gastronomie française, Julie crée des recettes qui allient tradition
+              et modernité. Elle veille à la qualité et à la fraîcheur de chaque ingrédient.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-5">
+        <div class="card border-0 shadow text-center p-4 h-100">
+          <div class="card-body">
+            <div class="avatar-placeholder bg-veg text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                 style="width:80px;height:80px;font-size:2rem;" aria-hidden="true">
+              <i class="bi bi-person-badge"></i>
+            </div>
+            <h3 class="h5 fw-bold">José</h3>
+            <p class="text-muted small fw-semibold mb-2">Responsable logistique &amp; livraison</p>
+            <p class="text-muted small">
+              José assure la logistique et la livraison avec rigueur et ponctualité.
+              Il s'occupe également de la relation client et de la coordination des événements.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Avis clients ══════════════════════════════════════════ -->
+<section class="py-5 bg-light" aria-labelledby="titre-avis">
+  <div class="container">
+    <h2 id="titre-avis" class="text-center fw-bold mb-2">Ce que disent nos clients</h2>
+    <p class="text-center text-muted mb-5">Des avis authentiques, vérifiés par notre équipe</p>
+
+    {% if avis %}
+    <div class="row g-4">
+      {% for a in avis %}
+      <div class="col-md-6 col-lg-4">
+        <article class="card border-0 shadow-sm h-100">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <div class="bg-veg text-white rounded-circle d-flex align-items-center justify-content-center me-3"
+                   style="width:42px;height:42px;font-size:1.1rem;" aria-hidden="true">
+                {{ a.utilisateur.prenom[0] }}{{ a.utilisateur.nom[0] }}
+              </div>
+              <div>
+                <strong>{{ a.utilisateur.prenom }} {{ a.utilisateur.nom[0] }}.</strong>
+                <div class="text-warning" aria-label="Note : {{ a.note }} sur 5">
+                  {% for i in range(5) %}
+                    <i class="bi bi-star{% if i < a.note %}-fill{% endif %}" aria-hidden="true"></i>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+            {% if a.commentaire %}
+            <p class="text-muted small mb-0 fst-italic">"{{ a.commentaire }}"</p>
+            {% endif %}
+            <p class="text-muted small mt-2 mb-0">
+              <i class="bi bi-calendar3 me-1" aria-hidden="true"></i>
+              {{ a.created_at.strftime('%B %Y') }}
+            </p>
+          </div>
+        </article>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-4">
+      <i class="bi bi-chat-square-quote text-muted display-4" aria-hidden="true"></i>
+      <p class="text-muted mt-3">Soyez le premier à donner votre avis !</p>
+      <a href="{{ url_for('menus.liste') }}" class="btn btn-veg">Découvrir nos menus</a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ═══ Appel à l'action ══════════════════════════════════════ -->
+<section class="py-5 bg-veg text-white text-center" aria-labelledby="titre-cta">
+  <div class="container">
+    <h2 id="titre-cta" class="fw-bold mb-3">Prêt à commander ?</h2>
+    <p class="lead mb-4">Parcourez nos menus et passez commande en quelques clics.</p>
+    <a href="{{ url_for('menus.liste') }}" class="btn btn-light btn-lg">
+      <i class="bi bi-journal-text me-1" aria-hidden="true"></i>Voir nos menus
+    </a>
+  </div>
+</section>
+
+{% endblock %}

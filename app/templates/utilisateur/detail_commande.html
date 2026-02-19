@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block titre %}Commande {{ commande.numero }}{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <nav aria-label="Fil d'Ariane">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('utilisateur.mes_commandes') }}">Mes commandes</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ commande.numero }}</li>
+    </ol>
+  </nav>
+
+  <div class="row g-4">
+    <!-- Récapitulatif -->
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-veg text-white fw-semibold">
+          <i class="bi bi-receipt me-2" aria-hidden="true"></i>Récapitulatif
+        </div>
+        <div class="card-body p-4">
+          <dl class="row mb-0">
+            <dt class="col-5">N° commande</dt><dd class="col-7">{{ commande.numero }}</dd>
+            <dt class="col-5">Menu</dt><dd class="col-7">{{ commande.menu.titre }}</dd>
+            <dt class="col-5">Date prestation</dt>
+            <dd class="col-7">{{ commande.date_prestation.strftime('%d/%m/%Y') }} à {{ commande.heure_livraison }}</dd>
+            <dt class="col-5">Lieu</dt>
+            <dd class="col-7">{{ commande.adresse_livraison }}, {{ commande.ville_livraison }}</dd>
+            <dt class="col-5">Personnes</dt><dd class="col-7">{{ commande.nb_personnes }}</dd>
+            <dt class="col-5">Prix menu</dt><dd class="col-7">{{ "%.2f"|format(commande.prix_menu) }} €</dd>
+            <dt class="col-5">Frais livraison</dt><dd class="col-7">{{ "%.2f"|format(commande.prix_livraison) }} €</dd>
+            <dt class="col-5 fw-bold fs-5">Total</dt>
+            <dd class="col-7 fw-bold fs-5 text-veg">{{ "%.2f"|format(commande.prix_total) }} €</dd>
+          </dl>
+        </div>
+      </div>
+
+      {% if commande.statut == 'annulee' and commande.motif_annulation %}
+      <div class="alert alert-danger">
+        <strong>Commande annulée</strong><br>
+        Motif : {{ commande.motif_annulation }}
+      </div>
+      {% endif %}
+
+      <div class="d-flex gap-2 flex-wrap">
+        {% if commande.peut_etre_modifiee %}
+        <a href="{{ url_for('utilisateur.modifier_commande', commande_id=commande.id) }}"
+           class="btn btn-outline-primary">
+          <i class="bi bi-pencil me-1" aria-hidden="true"></i>Modifier
+        </a>
+        <form method="post" action="{{ url_for('utilisateur.annuler_commande', commande_id=commande.id) }}"
+              onsubmit="return confirm('Confirmer l\'annulation ?')">
+          <button type="submit" class="btn btn-outline-danger">
+            <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Annuler la commande
+          </button>
+        </form>
+        {% endif %}
+        {% if commande.statut == 'terminee' and not commande.avis_donne %}
+        <a href="{{ url_for('utilisateur.donner_avis', commande_id=commande.id) }}"
+           class="btn btn-outline-warning">
+          <i class="bi bi-star me-1" aria-hidden="true"></i>Laisser un avis
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Suivi -->
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header fw-semibold">
+          <i class="bi bi-clock-history me-2" aria-hidden="true"></i>Suivi de la commande
+        </div>
+        <div class="card-body p-4">
+          {% if commande.suivis %}
+          <ol class="list-unstyled timeline" aria-label="Historique des statuts">
+            {% for s in commande.suivis %}
+            <li class="timeline-item {% if loop.last %}timeline-item-active{% endif %}">
+              <div class="timeline-marker"></div>
+              <div class="ms-3">
+                <strong>{{ s.statut_libelle }}</strong>
+                <div class="text-muted small">{{ s.date_modification.strftime('%d/%m/%Y à %H:%M') }}</div>
+              </div>
+            </li>
+            {% endfor %}
+          </ol>
+          {% else %}
+          <p class="text-muted text-center">Aucun suivi disponible.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

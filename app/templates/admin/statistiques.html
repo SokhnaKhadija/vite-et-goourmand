@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block titre %}Statistiques{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <h1 class="fw-bold mb-4">
+    <i class="bi bi-bar-chart me-2 text-veg" aria-hidden="true"></i>Statistiques & Chiffre d'affaires
+  </h1>
+
+  <!-- Filtres -->
+  <form method="get" class="card border-0 shadow-sm mb-5">
+    <div class="card-body p-4">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label for="menu_id" class="form-label fw-semibold">Filtrer par menu</label>
+          <select class="form-select" id="menu_id" name="menu_id">
+            <option value="">Tous les menus</option>
+            {% for m in menus %}
+            <option value="{{ m.id }}" {% if m.id == menu_id_filtre %}selected{% endif %}>{{ m.titre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label for="date_debut" class="form-label fw-semibold">Du</label>
+          <input type="date" class="form-control" id="date_debut" name="date_debut"
+                 value="{{ date_debut }}">
+        </div>
+        <div class="col-md-3">
+          <label for="date_fin" class="form-label fw-semibold">Au</label>
+          <input type="date" class="form-control" id="date_fin" name="date_fin"
+                 value="{{ date_fin }}">
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-veg w-100">
+            <i class="bi bi-search me-1" aria-hidden="true"></i>Filtrer
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <!-- Tableau CA (PostgreSQL) -->
+  <div class="card border-0 shadow-sm mb-5">
+    <div class="card-header fw-semibold">
+      <i class="bi bi-table me-2" aria-hidden="true"></i>Chiffre d'affaires par menu
+    </div>
+    <div class="card-body p-0">
+      {% if resultats_ca %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Menu</th>
+              <th class="text-end">Nb commandes</th>
+              <th class="text-end">CA total (€)</th>
+              <th class="text-end">CA moyen / commande</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in resultats_ca %}
+            <tr>
+              <td class="fw-semibold">{{ r.titre }}</td>
+              <td class="text-end">{{ r.nb_commandes }}</td>
+              <td class="text-end fw-semibold text-veg">{{ "%.2f"|format(r.ca or 0) }} €</td>
+              <td class="text-end text-muted">{{ "%.2f"|format((r.ca or 0) / r.nb_commandes if r.nb_commandes else 0) }} €</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot class="table-light fw-bold">
+            <tr>
+              <td>Total</td>
+              <td class="text-end">{{ resultats_ca | sum(attribute='nb_commandes') }}</td>
+              <td class="text-end text-veg">{{ "%.2f"|format(resultats_ca | sum(attribute='ca') or 0) }} €</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted text-center py-4">Aucune donnée pour les filtres sélectionnés.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Graphique comparatif (MongoDB) -->
+  {% if stats_mongo %}
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header fw-semibold">
+          <i class="bi bi-bar-chart-fill me-2" aria-hidden="true"></i>Commandes par menu
+        </div>
+        <div class="card-body p-4">
+          <canvas id="graphNbCommandes" style="max-height:300px"
+                  aria-label="Nombre de commandes par menu"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header fw-semibold">
+          <i class="bi bi-pie-chart me-2" aria-hidden="true"></i>Répartition du CA
+        </div>
+        <div class="card-body p-4">
+          <canvas id="graphCA" style="max-height:300px"
+                  aria-label="Répartition du chiffre d'affaires par menu"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if stats_mongo %}
+<script>
+const labels = {{ stats_mongo | map(attribute='menu_titre') | list | tojson }};
+const counts = {{ stats_mongo | map(attribute='count') | list | tojson }};
+const cas = {{ stats_mongo | map(attribute='chiffre_affaires') | list | tojson }};
+const couleurs = ['#6f42c1','#0d6efd','#198754','#fd7e14','#dc3545','#0dcaf0','#ffc107'];
+
+new Chart(document.getElementById('graphNbCommandes'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [{ label: 'Commandes', data: counts, backgroundColor: couleurs, borderRadius: 6 }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+  }
+});
+
+new Chart(document.getElementById('graphCA'), {
+  type: 'doughnut',
+  data: {
+    labels,
+    datasets: [{ data: cas, backgroundColor: couleurs }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom' } }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

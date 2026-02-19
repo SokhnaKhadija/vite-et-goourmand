@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block titre %}Nouveau compte employé{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-6">
+      <h1 class="fw-bold mb-4">Créer un compte employé</h1>
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <div class="alert alert-info small">
+            <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+            L'employé recevra un e-mail lui notifiant la création de son compte.
+            Le mot de passe ne sera pas communiqué dans l'e-mail — il devra se rapprocher de vous.
+          </div>
+          <form method="post" novalidate>
+            <div class="mb-3">
+              <label for="prenom" class="form-label fw-semibold">Prénom <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="prenom" name="prenom" required>
+            </div>
+            <div class="mb-3">
+              <label for="nom" class="form-label fw-semibold">Nom <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="nom" name="nom" required>
+            </div>
+            <div class="mb-3">
+              <label for="email" class="form-label fw-semibold">E-mail (identifiant) <span class="text-danger">*</span></label>
+              <input type="email" class="form-control" id="email" name="email"
+                     placeholder="employe@viteetsourmand.fr" required>
+            </div>
+            <div class="mb-4">
+              <label for="mot_de_passe" class="form-label fw-semibold">Mot de passe <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <input type="password" class="form-control" id="mot_de_passe" name="mot_de_passe"
+                       required aria-describedby="aide-mdp-emp">
+                <button class="btn btn-outline-secondary" type="button"
+                        onclick="toggleMDP('mot_de_passe', this)"
+                        aria-label="Afficher/masquer">
+                  <i class="bi bi-eye" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div id="aide-mdp-emp" class="form-text">
+                Min. 10 caractères : majuscule, minuscule, chiffre, caractère spécial.
+              </div>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-veg">
+                <i class="bi bi-person-plus me-2" aria-hidden="true"></i>Créer le compte
+              </button>
+              <a href="{{ url_for('admin.employes') }}" class="btn btn-outline-secondary">Annuler</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

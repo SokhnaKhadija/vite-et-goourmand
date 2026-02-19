@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block titre %}Mon profil{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <div class="row">
+    <div class="col-lg-3 mb-4">
+      <div class="list-group shadow-sm">
+        <a href="{{ url_for('utilisateur.profil') }}" class="list-group-item list-group-item-action active">
+          <i class="bi bi-person me-2" aria-hidden="true"></i>Mon profil
+        </a>
+        <a href="{{ url_for('utilisateur.mes_commandes') }}" class="list-group-item list-group-item-action">
+          <i class="bi bi-bag me-2" aria-hidden="true"></i>Mes commandes
+        </a>
+      </div>
+    </div>
+    <div class="col-lg-9">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-veg text-white fw-semibold">
+          <i class="bi bi-person-circle me-2" aria-hidden="true"></i>Informations personnelles
+        </div>
+        <div class="card-body p-4">
+          <form method="post" novalidate>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="prenom" class="form-label fw-semibold">Prénom</label>
+                <input type="text" class="form-control" id="prenom" name="prenom"
+                       value="{{ current_user.prenom }}" required>
+              </div>
+              <div class="col-md-6">
+                <label for="nom" class="form-label fw-semibold">Nom</label>
+                <input type="text" class="form-control" id="nom" name="nom"
+                       value="{{ current_user.nom }}" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Adresse e-mail</label>
+                <input type="email" class="form-control" value="{{ current_user.email }}" disabled
+                       aria-label="Email non modifiable">
+                <div class="form-text">L'adresse e-mail ne peut pas être modifiée.</div>
+              </div>
+              <div class="col-md-6">
+                <label for="telephone" class="form-label fw-semibold">Téléphone</label>
+                <input type="tel" class="form-control" id="telephone" name="telephone"
+                       value="{{ current_user.telephone or '' }}">
+              </div>
+              <div class="col-12">
+                <label for="adresse" class="form-label fw-semibold">Adresse</label>
+                <input type="text" class="form-control" id="adresse" name="adresse"
+                       value="{{ current_user.adresse or '' }}">
+              </div>
+              <div class="col-md-6">
+                <label for="ville" class="form-label fw-semibold">Ville</label>
+                <input type="text" class="form-control" id="ville" name="ville"
+                       value="{{ current_user.ville or '' }}">
+              </div>
+              <div class="col-md-6">
+                <label for="code_postal" class="form-label fw-semibold">Code postal</label>
+                <input type="text" class="form-control" id="code_postal" name="code_postal"
+                       value="{{ current_user.code_postal or '' }}" maxlength="10">
+              </div>
+            </div>
+
+            <hr class="my-4">
+            <h2 class="h5 fw-bold mb-3">Changer de mot de passe</h2>
+            <p class="text-muted small">Laissez vide pour conserver votre mot de passe actuel.</p>
+            <div class="row g-3">
+              <div class="col-12">
+                <label for="ancien_mot_de_passe" class="form-label fw-semibold">Mot de passe actuel</label>
+                <input type="password" class="form-control" id="ancien_mot_de_passe"
+                       name="ancien_mot_de_passe" autocomplete="current-password">
+              </div>
+              <div class="col-md-6">
+                <label for="nouveau_mot_de_passe" class="form-label fw-semibold">Nouveau mot de passe</label>
+                <input type="password" class="form-control" id="nouveau_mot_de_passe"
+                       name="nouveau_mot_de_passe" autocomplete="new-password"
+                       aria-describedby="aide-mdp-profil">
+                <div id="aide-mdp-profil" class="form-text">Min. 10 car. : maj., min., chiffre, spécial.</div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-veg mt-4">
+              <i class="bi bi-check2 me-2" aria-hidden="true"></i>Enregistrer les modifications
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

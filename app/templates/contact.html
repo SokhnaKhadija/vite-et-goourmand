@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block titre %}Contact{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+      <h1 class="fw-bold mb-2">Nous contacter</h1>
+      <p class="text-muted mb-4">
+        Une question ? Un projet ? Remplissez le formulaire ci-dessous et nous vous répondrons dans les plus brefs délais.
+      </p>
+
+      <div class="card border-0 shadow">
+        <div class="card-body p-4">
+          <form method="post" action="{{ url_for('main.contact') }}" novalidate>
+            <div class="mb-3">
+              <label for="email" class="form-label fw-semibold">Votre adresse e-mail <span class="text-danger" aria-hidden="true">*</span></label>
+              <input type="email" class="form-control" id="email" name="email"
+                     placeholder="votre@email.fr" required autocomplete="email"
+                     aria-required="true">
+            </div>
+            <div class="mb-3">
+              <label for="titre" class="form-label fw-semibold">Titre / Objet <span class="text-danger" aria-hidden="true">*</span></label>
+              <input type="text" class="form-control" id="titre" name="titre"
+                     placeholder="Sujet de votre message" required maxlength="150"
+                     aria-required="true">
+            </div>
+            <div class="mb-4">
+              <label for="description" class="form-label fw-semibold">Message <span class="text-danger" aria-hidden="true">*</span></label>
+              <textarea class="form-control" id="description" name="description"
+                        rows="6" placeholder="Décrivez votre demande..." required
+                        aria-required="true"></textarea>
+            </div>
+            <button type="submit" class="btn btn-veg w-100">
+              <i class="bi bi-send me-2" aria-hidden="true"></i>Envoyer le message
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4 mt-4 mt-lg-0">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <h2 class="h5 fw-bold mb-3">Nos coordonnées</h2>
+          <address class="mb-0">
+            <p><i class="bi bi-geo-alt text-veg me-2" aria-hidden="true"></i>Bordeaux, France</p>
+            <p><i class="bi bi-envelope text-veg me-2" aria-hidden="true"></i>contact@viteetsourmand.fr</p>
+            <p class="mb-0"><i class="bi bi-clock text-veg me-2" aria-hidden="true"></i>Lun–Sam : 09h00 – 18h00</p>
+          </address>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

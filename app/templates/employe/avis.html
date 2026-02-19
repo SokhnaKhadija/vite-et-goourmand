@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block titre %}Modération des avis{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <h1 class="fw-bold mb-4">Modération des avis</h1>
+
+  <!-- Onglets -->
+  <ul class="nav nav-tabs mb-4" role="tablist">
+    <li class="nav-item" role="presentation">
+      <a class="nav-link {% if statut == 'en_attente' %}active{% endif %}"
+         href="{{ url_for('employe.gestion_avis', statut='en_attente') }}"
+         role="tab">
+        <i class="bi bi-clock me-1" aria-hidden="true"></i>En attente
+      </a>
+    </li>
+    <li class="nav-item" role="presentation">
+      <a class="nav-link {% if statut == 'valide' %}active{% endif %}"
+         href="{{ url_for('employe.gestion_avis', statut='valide') }}"
+         role="tab">
+        <i class="bi bi-check-circle me-1" aria-hidden="true"></i>Validés
+      </a>
+    </li>
+    <li class="nav-item" role="presentation">
+      <a class="nav-link {% if statut == 'refuse' %}active{% endif %}"
+         href="{{ url_for('employe.gestion_avis', statut='refuse') }}"
+         role="tab">
+        <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Refusés
+      </a>
+    </li>
+  </ul>
+
+  {% if avis %}
+  <div class="row g-3">
+    {% for a in avis %}
+    <div class="col-md-6">
+      <article class="card border-0 shadow-sm h-100">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between mb-2">
+            <strong>{{ a.utilisateur.prenom }} {{ a.utilisateur.nom }}</strong>
+            <div class="text-warning" aria-label="Note : {{ a.note }}/5">
+              {% for i in range(5) %}
+              <i class="bi bi-star{% if i < a.note %}-fill{% endif %}" aria-hidden="true"></i>
+              {% endfor %}
+            </div>
+          </div>
+          <p class="text-muted small mb-1">Menu : {{ a.commande.menu.titre }}</p>
+          {% if a.commentaire %}
+          <p class="fst-italic text-muted small mb-2">"{{ a.commentaire }}"</p>
+          {% endif %}
+          <p class="text-muted small mb-3">{{ a.created_at.strftime('%d/%m/%Y') }}</p>
+
+          {% if statut == 'en_attente' %}
+          <div class="d-flex gap-2">
+            <form method="post" action="{{ url_for('employe.valider_avis', avis_id=a.id) }}">
+              <button type="submit" class="btn btn-success btn-sm">
+                <i class="bi bi-check2 me-1" aria-hidden="true"></i>Valider
+              </button>
+            </form>
+            <form method="post" action="{{ url_for('employe.refuser_avis', avis_id=a.id) }}">
+              <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-x me-1" aria-hidden="true"></i>Refuser
+              </button>
+            </form>
+          </div>
+          {% endif %}
+        </div>
+      </article>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-5">
+    <i class="bi bi-star display-4 text-muted" aria-hidden="true"></i>
+    <p class="mt-3 text-muted">Aucun avis dans cette catégorie.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

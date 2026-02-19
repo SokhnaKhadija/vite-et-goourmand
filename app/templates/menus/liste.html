@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block titre %}Nos menus{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <h1 class="fw-bold mb-1">Nos menus</h1>
+  <p class="text-muted mb-4">Découvrez toutes nos créations culinaires. Utilisez les filtres pour trouver le menu idéal.</p>
+
+  <div class="row g-4">
+    <!-- Panneau filtres -->
+    <aside class="col-lg-3" aria-label="Filtres de recherche">
+      <div class="card border-0 shadow-sm sticky-top" style="top:80px">
+        <div class="card-header bg-veg text-white fw-semibold">
+          <i class="bi bi-funnel me-2" aria-hidden="true"></i>Filtres
+        </div>
+        <div class="card-body p-3">
+          <form id="form-filtres">
+            <div class="mb-3">
+              <label for="prix_min" class="form-label small fw-semibold">Prix minimum (€)</label>
+              <input type="number" class="form-control form-control-sm" id="prix_min"
+                     name="prix_min" min="0" step="5" placeholder="0">
+            </div>
+            <div class="mb-3">
+              <label for="prix_max" class="form-label small fw-semibold">Prix maximum (€)</label>
+              <input type="number" class="form-control form-control-sm" id="prix_max"
+                     name="prix_max" min="0" step="5" placeholder="Illimité">
+            </div>
+            <div class="mb-3">
+              <label for="theme_id" class="form-label small fw-semibold">Thème</label>
+              <select class="form-select form-select-sm" id="theme_id" name="theme_id">
+                <option value="">Tous les thèmes</option>
+                {% for t in themes %}
+                <option value="{{ t.id }}">{{ t.libelle }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="regime_id" class="form-label small fw-semibold">Régime</label>
+              <select class="form-select form-select-sm" id="regime_id" name="regime_id">
+                <option value="">Tous les régimes</option>
+                {% for r in regimes %}
+                <option value="{{ r.id }}">{{ r.libelle }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="nb_personnes" class="form-label small fw-semibold">Nb de personnes</label>
+              <input type="number" class="form-control form-control-sm" id="nb_personnes"
+                     name="nb_personnes" min="1" placeholder="ex: 10">
+            </div>
+            <button type="button" class="btn btn-veg btn-sm w-100" onclick="filtrerMenus()">
+              <i class="bi bi-search me-1" aria-hidden="true"></i>Filtrer
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm w-100 mt-2" onclick="reinitialiserFiltres()">
+              <i class="bi bi-x-circle me-1" aria-hidden="true"></i>Réinitialiser
+            </button>
+          </form>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Résultats -->
+    <section class="col-lg-9" aria-label="Liste des menus" aria-live="polite">
+      <div id="loader" class="text-center py-5 d-none" role="status" aria-live="polite">
+        <div class="spinner-border text-veg" aria-label="Chargement..."></div>
+        <p class="mt-2 text-muted">Chargement des menus…</p>
+      </div>
+      <div id="conteneur-menus" class="row g-4">
+        <!-- Rempli dynamiquement par JS -->
+      </div>
+      <p id="aucun-resultat" class="text-center text-muted py-5 d-none">
+        <i class="bi bi-search display-4 d-block mb-2" aria-hidden="true"></i>
+        Aucun menu ne correspond à vos critères.
+      </p>
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const URL_FILTRER = "{{ url_for('menus.api_filtrer') }}";
+
+async function filtrerMenus() {
+  const form = document.getElementById('form-filtres');
+  const loader = document.getElementById('loader');
+  const conteneur = document.getElementById('conteneur-menus');
+  const aucun = document.getElementById('aucun-resultat');
+
+  const params = new URLSearchParams();
+  const fields = ['prix_min', 'prix_max', 'theme_id', 'regime_id', 'nb_personnes'];
+  fields.forEach(f => {
+    const val = form.querySelector(`[name="${f}"]`).value;
+    if (val) params.append(f, val);
+  });
+
+  loader.classList.remove('d-none');
+  conteneur.innerHTML = '';
+  aucun.classList.add('d-none');
+
+  try {
+    const resp = await fetch(`${URL_FILTRER}?${params.toString()}`);
+    const menus = await resp.json();
+
+    loader.classList.add('d-none');
+
+    if (menus.length === 0) {
+      aucun.classList.remove('d-none');
+      return;
+    }
+
+    menus.forEach(m => {
+      const img = m.image
+        ? `<img src="/static/${m.image}" class="card-img-top object-fit-cover" style="height:200px" alt="${m.titre}">`
+        : `<div class="bg-light d-flex align-items-center justify-content-center" style="height:200px">
+             <i class="bi bi-image text-muted" style="font-size:3rem" aria-hidden="true"></i>
+           </div>`;
+      const stock = m.stock <= 5 && m.stock > 0
+        ? `<span class="badge bg-warning text-dark ms-2">Plus que ${m.stock} dispo.</span>` : '';
+      const rupture = m.stock === 0
+        ? `<span class="badge bg-danger ms-2">Épuisé</span>` : '';
+
+      conteneur.innerHTML += `
+        <div class="col-md-6 col-xl-4">
+          <article class="card border-0 shadow-sm h-100">
+            ${img}
+            <div class="card-body d-flex flex-column">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="badge bg-veg">${m.theme}</span>
+                <span class="badge bg-secondary">${m.regime}</span>
+              </div>
+              <h2 class="h5 fw-bold">${m.titre}${stock}${rupture}</h2>
+              <p class="text-muted small flex-grow-1">${m.description || ''}</p>
+              <div class="d-flex justify-content-between align-items-center mt-3">
+                <div class="small text-muted">
+                  <i class="bi bi-people me-1" aria-hidden="true"></i>À partir de ${m.nb_personnes_min} pers.
+                </div>
+                <strong class="text-veg fs-5">${m.prix_base.toFixed(2)} €</strong>
+              </div>
+              <a href="${m.url_detail}" class="btn btn-veg btn-sm mt-3 w-100">
+                <i class="bi bi-eye me-1" aria-hidden="true"></i>Voir le menu
+              </a>
+            </div>
+          </article>
+        </div>`;
+    });
+  } catch(e) {
+    loader.classList.add('d-none');
+    conteneur.innerHTML = '<div class="col-12 text-center text-danger">Erreur lors du chargement des menus.</div>';
+  }
+}
+
+function reinitialiserFiltres() {
+  document.getElementById('form-filtres').reset();
+  filtrerMenus();
+}
+
+// Filtrage dynamique à la saisie
+document.querySelectorAll('#form-filtres input, #form-filtres select').forEach(el => {
+  el.addEventListener('change', filtrerMenus);
+});
+
+// Chargement initial
+filtrerMenus();
+</script>
+{% endblock %}

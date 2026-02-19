@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block titre %}Mot de passe oublié{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-5">
+      <div class="card border-0 shadow">
+        <div class="card-body p-4">
+          <h1 class="h3 fw-bold text-center mb-1">Mot de passe oublié</h1>
+          <p class="text-muted text-center small mb-4">
+            Saisissez votre adresse e-mail. Si elle est enregistrée, vous recevrez un lien de réinitialisation.
+          </p>
+          <form method="post" novalidate>
+            <div class="mb-3">
+              <label for="email" class="form-label fw-semibold">Adresse e-mail</label>
+              <input type="email" class="form-control" id="email" name="email"
+                     placeholder="votre@email.fr" required autocomplete="email"
+                     aria-required="true">
+            </div>
+            <button type="submit" class="btn btn-veg w-100">
+              <i class="bi bi-envelope me-2" aria-hidden="true"></i>Envoyer le lien
+            </button>
+          </form>
+          <hr>
+          <p class="text-center small mb-0">
+            <a href="{{ url_for('auth.connexion') }}" class="text-veg">
+              <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>Retour à la connexion
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

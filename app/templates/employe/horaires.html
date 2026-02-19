@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block titre %}Gestion des horaires{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+      <h1 class="fw-bold mb-4">Horaires d'ouverture</h1>
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <form method="post" novalidate>
+            <table class="table align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Jour</th>
+                  <th>Ouverture</th>
+                  <th>Fermeture</th>
+                  <th>Fermé</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for h in horaires %}
+                <tr>
+                  <td class="fw-semibold">{{ h.jour }}</td>
+                  <td>
+                    <input type="time" class="form-control form-control-sm"
+                           name="ouverture_{{ h.id }}"
+                           value="{{ h.heure_ouverture or '' }}"
+                           {% if h.ferme %}disabled{% endif %}>
+                  </td>
+                  <td>
+                    <input type="time" class="form-control form-control-sm"
+                           name="fermeture_{{ h.id }}"
+                           value="{{ h.heure_fermeture or '' }}"
+                           {% if h.ferme %}disabled{% endif %}>
+                  </td>
+                  <td>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox"
+                             name="ferme_{{ h.id }}" id="ferme_{{ h.id }}"
+                             {% if h.ferme %}checked{% endif %}
+                             onchange="toggleJour({{ h.id }}, this.checked)">
+                      <label class="form-check-label visually-hidden" for="ferme_{{ h.id }}">
+                        Fermé le {{ h.jour }}
+                      </label>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            <button type="submit" class="btn btn-veg w-100 mt-2">
+              <i class="bi bi-check2 me-2" aria-hidden="true"></i>Enregistrer les horaires
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleJour(id, ferme) {
+  const row = document.querySelector(`[name="ouverture_${id}"]`);
+  const rowF = document.querySelector(`[name="fermeture_${id}"]`);
+  if (row) row.disabled = ferme;
+  if (rowF) rowF.disabled = ferme;
+}
+</script>
+{% endblock %}

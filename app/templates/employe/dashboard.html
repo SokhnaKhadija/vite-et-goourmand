@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block titre %}Espace employé{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <h1 class="fw-bold mb-4">
+    <i class="bi bi-tools me-2 text-veg" aria-hidden="true"></i>Espace employé
+  </h1>
+
+  <div class="row g-4 mb-5">
+    <div class="col-md-4">
+      <a href="{{ url_for('employe.commandes') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm text-center p-4 h-100">
+          <div class="card-body">
+            <i class="bi bi-inbox text-veg display-4" aria-hidden="true"></i>
+            <h2 class="h5 fw-bold mt-2">Commandes</h2>
+            {% if nb_commandes_attente > 0 %}
+            <span class="badge bg-warning text-dark fs-6">{{ nb_commandes_attente }} en attente</span>
+            {% else %}
+            <span class="text-muted small">Aucune en attente</span>
+            {% endif %}
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-4">
+      <a href="{{ url_for('employe.gestion_menus') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm text-center p-4 h-100">
+          <div class="card-body">
+            <i class="bi bi-journal-text text-veg display-4" aria-hidden="true"></i>
+            <h2 class="h5 fw-bold mt-2">Gestion des menus</h2>
+            <span class="text-muted small">Créer, modifier, supprimer</span>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-4">
+      <a href="{{ url_for('employe.gestion_plats') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm text-center p-4 h-100">
+          <div class="card-body">
+            <i class="bi bi-basket text-veg display-4" aria-hidden="true"></i>
+            <h2 class="h5 fw-bold mt-2">Gestion des plats</h2>
+            <span class="text-muted small">Entrées, plats, desserts</span>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-4">
+      <a href="{{ url_for('employe.gestion_avis') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm text-center p-4 h-100">
+          <div class="card-body">
+            <i class="bi bi-star text-veg display-4" aria-hidden="true"></i>
+            <h2 class="h5 fw-bold mt-2">Modération des avis</h2>
+            {% if nb_avis_attente > 0 %}
+            <span class="badge bg-warning text-dark fs-6">{{ nb_avis_attente }} à valider</span>
+            {% else %}
+            <span class="text-muted small">Aucun en attente</span>
+            {% endif %}
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-4">
+      <a href="{{ url_for('employe.horaires') }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm text-center p-4 h-100">
+          <div class="card-body">
+            <i class="bi bi-clock text-veg display-4" aria-hidden="true"></i>
+            <h2 class="h5 fw-bold mt-2">Horaires</h2>
+            <span class="text-muted small">Gérer les horaires d'ouverture</span>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

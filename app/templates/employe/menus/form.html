@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block titre %}{{ 'Modifier' if menu else 'Nouveau' }} menu{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <h1 class="fw-bold mb-4">{{ 'Modifier le menu' if menu else 'Nouveau menu' }}</h1>
+
+  <form method="post" enctype="multipart/form-data" novalidate>
+    <div class="row g-4">
+      <!-- Infos générales -->
+      <div class="col-lg-8">
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header fw-semibold bg-veg text-white">Informations générales</div>
+          <div class="card-body p-4">
+            <div class="mb-3">
+              <label for="titre" class="form-label fw-semibold">Titre <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="titre" name="titre"
+                     value="{{ menu.titre if menu else '' }}" required>
+            </div>
+            <div class="mb-3">
+              <label for="description" class="form-label fw-semibold">Description</label>
+              <textarea class="form-control" id="description" name="description" rows="4">{{ menu.description if menu else '' }}</textarea>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="theme_id" class="form-label fw-semibold">Thème <span class="text-danger">*</span></label>
+                <select class="form-select" id="theme_id" name="theme_id" required>
+                  {% for t in themes %}
+                  <option value="{{ t.id }}" {% if menu and menu.theme_id == t.id %}selected{% endif %}>{{ t.libelle }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="regime_id" class="form-label fw-semibold">Régime <span class="text-danger">*</span></label>
+                <select class="form-select" id="regime_id" name="regime_id" required>
+                  {% for r in regimes %}
+                  <option value="{{ r.id }}" {% if menu and menu.regime_id == r.id %}selected{% endif %}>{{ r.libelle }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label for="nb_personnes_min" class="form-label fw-semibold">Min. personnes <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="nb_personnes_min" name="nb_personnes_min"
+                       value="{{ menu.nb_personnes_min if menu else 1 }}" min="1" required>
+              </div>
+              <div class="col-md-4">
+                <label for="prix_base" class="form-label fw-semibold">Prix de base (€) <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="prix_base" name="prix_base"
+                       value="{{ menu.prix_base if menu else '' }}" min="0" step="0.01" required>
+              </div>
+              <div class="col-md-4">
+                <label for="stock" class="form-label fw-semibold">Stock disponible</label>
+                <input type="number" class="form-control" id="stock" name="stock"
+                       value="{{ menu.stock if menu else 0 }}" min="0">
+              </div>
+            </div>
+            <div class="mb-3 mt-3">
+              <label for="conditions" class="form-label fw-semibold">Conditions du menu</label>
+              <textarea class="form-control" id="conditions" name="conditions" rows="3"
+                        placeholder="Ex : Commander au moins 7 jours avant la prestation…">{{ menu.conditions if menu else '' }}</textarea>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="actif" name="actif"
+                     {% if not menu or menu.actif %}checked{% endif %}>
+              <label class="form-check-label" for="actif">Menu actif (visible sur le site)</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Plats -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header fw-semibold">
+            <i class="bi bi-basket me-2" aria-hidden="true"></i>Plats du menu
+          </div>
+          <div class="card-body p-4">
+            {% if plats_disponibles %}
+            <div class="row g-2">
+              {% for type_plat, libelle in [('entree','Entrées'),('plat','Plats'),('dessert','Desserts')] %}
+              <div class="col-12">
+                <h3 class="h6 fw-semibold text-veg">{{ libelle }}</h3>
+                {% for p in plats_disponibles if p.type_plat == type_plat %}
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="plats" value="{{ p.id }}"
+                         id="plat_{{ p.id }}"
+                         {% if menu and p in menu.plats %}checked{% endif %}>
+                  <label class="form-check-label" for="plat_{{ p.id }}">
+                    {{ p.titre }}
+                    {% if p.allergenes %}
+                    <small class="text-muted">({{ p.allergenes|map(attribute='libelle')|join(', ') }})</small>
+                    {% endif %}
+                  </label>
+                </div>
+                {% endfor %}
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted small">
+              Aucun plat disponible.
+              <a href="{{ url_for('employe.nouveau_plat') }}">Créer un plat d'abord.</a>
+            </p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Images -->
+      <div class="col-lg-4">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header fw-semibold">
+            <i class="bi bi-images me-2" aria-hidden="true"></i>Galerie d'images
+          </div>
+          <div class="card-body p-4">
+            {% if menu and menu.images %}
+            <div class="row g-2 mb-3">
+              {% for img in menu.images %}
+              <div class="col-6 position-relative">
+                <img src="{{ url_for('static', filename=img.chemin) }}"
+                     alt="Image {{ loop.index }}" class="img-fluid rounded"
+                     style="height:80px;width:100%;object-fit:cover">
+                <form method="post"
+                      action="{{ url_for('employe.supprimer_image', menu_id=menu.id, image_id=img.id) }}"
+                      class="position-absolute top-0 end-0 m-1">
+                  <button type="submit" class="btn btn-danger btn-sm p-1 lh-1"
+                          title="Supprimer l'image"
+                          onclick="return confirm('Supprimer cette image ?')">
+                    <i class="bi bi-x" aria-hidden="true"></i>
+                    <span class="visually-hidden">Supprimer</span>
+                  </button>
+                </form>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+            <label for="images" class="form-label fw-semibold small">Ajouter des images</label>
+            <input type="file" class="form-control form-control-sm" id="images" name="images"
+                   multiple accept="image/*" aria-describedby="aide-images">
+            <div id="aide-images" class="form-text">PNG, JPG, GIF ou WebP. Max 16 Mo par fichier.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-3">
+      <button type="submit" class="btn btn-veg">
+        <i class="bi bi-check2 me-2" aria-hidden="true"></i>Enregistrer
+      </button>
+      <a href="{{ url_for('employe.gestion_menus') }}" class="btn btn-outline-secondary">Annuler</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

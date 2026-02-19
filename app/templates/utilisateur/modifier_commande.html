@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block titre %}Modifier la commande{% endblock %}
+
+{% block contenu %}
+<div class="container py-5">
+  <h1 class="fw-bold mb-4">Modifier la commande <small class="text-muted fs-5">{{ commande.numero }}</small></h1>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      <form method="post" novalidate>
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="alert alert-info small">
+              <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+              Le choix du menu ne peut pas être modifié.
+              Menu actuel : <strong>{{ commande.menu.titre }}</strong>
+            </div>
+          </div>
+          <div class="col-12">
+            <label for="adresse_livraison" class="form-label fw-semibold">Adresse de livraison</label>
+            <input type="text" class="form-control" id="adresse_livraison" name="adresse_livraison"
+                   value="{{ commande.adresse_livraison }}" required>
+          </div>
+          <div class="col-md-5">
+            <label for="ville_livraison" class="form-label fw-semibold">Ville</label>
+            <input type="text" class="form-control" id="ville_livraison" name="ville_livraison"
+                   value="{{ commande.ville_livraison }}" required>
+          </div>
+          <div class="col-md-3">
+            <label for="code_postal_livraison" class="form-label fw-semibold">Code postal</label>
+            <input type="text" class="form-control" id="code_postal_livraison"
+                   name="code_postal_livraison" value="{{ commande.code_postal_livraison or '' }}" maxlength="10">
+          </div>
+          <div class="col-md-4">
+            <label for="date_prestation" class="form-label fw-semibold">Date de prestation</label>
+            <input type="date" class="form-control" id="date_prestation" name="date_prestation"
+                   value="{{ commande.date_prestation.isoformat() }}" required>
+          </div>
+          <div class="col-md-4">
+            <label for="heure_livraison" class="form-label fw-semibold">Heure souhaitée</label>
+            <input type="time" class="form-control" id="heure_livraison" name="heure_livraison"
+                   value="{{ commande.heure_livraison }}" required>
+          </div>
+          <div class="col-md-4">
+            <label for="nb_personnes" class="form-label fw-semibold">Nombre de personnes</label>
+            <input type="number" class="form-control" id="nb_personnes" name="nb_personnes"
+                   value="{{ commande.nb_personnes }}" min="{{ commande.menu.nb_personnes_min }}" required>
+            <div class="form-text">Minimum {{ commande.menu.nb_personnes_min }} personnes.</div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+          <button type="submit" class="btn btn-veg">
+            <i class="bi bi-check2 me-2" aria-hidden="true"></i>Enregistrer les modifications
+          </button>
+          <a href="{{ url_for('utilisateur.detail_commande', commande_id=commande.id) }}"
+             class="btn btn-outline-secondary">Annuler</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
