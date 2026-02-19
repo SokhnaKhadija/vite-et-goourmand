@@ -53,22 +53,34 @@ ADMIN_EMAIL=jose@viteetsourmand.fr
 ADMIN_PASSWORD=Admin@VG2025!
 ```
 
-### 5. Créer la base de données PostgreSQL
+### 5. Initialiser la base de données PostgreSQL
+
+Un script dédié crée automatiquement la base si elle n'existe pas, puis importe le schéma et les données de démonstration depuis `database.sql`.
 
 ```bash
-# Se connecter à PostgreSQL
-psql -U postgres
-
-# Dans psql :
-CREATE DATABASE vite_et_gourmand;
-\q
-
-# Importer le schéma et les données de démo
-psql -U postgres -d vite_et_gourmand -f database.sql
+python init_db.py
 ```
 
-> **Note :** Le script `run.py` crée également les tables automatiquement via SQLAlchemy
-> et initialise le compte administrateur si la base est vide.
+Le script affiche le résultat de chaque étape :
+
+```
+==================================================
+  Initialisation — Vite & Gourmand
+==================================================
+  Hôte     : localhost:5432
+  Base     : vite_et_gourmand
+  Utilisateur : postgres
+==================================================
+Création de la base de données 'vite_et_gourmand'...
+Base de données créée avec succès.
+Import de 'database.sql' dans 'vite_et_gourmand'...
+Import réussi. La base de données est prête.
+
+Démarrez maintenant l'application avec : python run.py
+```
+
+> **Note :** Le script `run.py` initialise également le compte administrateur
+> au premier démarrage si la base est vide.
 
 ### 6. Lancer l'application
 
@@ -108,6 +120,7 @@ ViteEtGourmand/
 │       └── decorateurs.py   # Contrôle d'accès par rôle
 ├── config.py                # Configuration
 ├── run.py                   # Point d'entrée
+├── init_db.py               # Script d'initialisation de la BDD
 ├── requirements.txt
 ├── database.sql             # Schéma SQL + données de démo
 ├── .env.example
@@ -190,4 +203,4 @@ Pour configurer un vrai SMTP, modifier `app/utils/email.py`.
 
 ## Licence
 
-Projet réalisé dans le cadre d'un TP académique — Vite & Gourmand © 2025.
+Projet réalisé dans le cadre d'un TP académique — Vite & Gourmand © 2026.
