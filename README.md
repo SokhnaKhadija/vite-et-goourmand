@@ -19,7 +19,7 @@ Développée avec **Python / Flask**, **PostgreSQL**, **MongoDB** et **Bootstrap
 ### 1. Cloner le dépôt
 
 ```bash
-git clone https://github.com/votre-user/vite-et-gourmand.git
+git clone https://github.com/SokhnaKhadija/vite-et-gourmand.git
 cd vite-et-gourmand
 ```
 
