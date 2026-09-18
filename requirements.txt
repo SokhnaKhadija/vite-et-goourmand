@@ -10,4 +10,4 @@ python-dotenv==1.0.1
 email-validator==2.1.1
 Pillow==10.3.0
 itsdangerous==2.2.0
-pydentic==2.7.0
+pydantic==2.7.0
