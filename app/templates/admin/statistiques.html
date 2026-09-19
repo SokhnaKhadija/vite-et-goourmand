@@ -16,7 +16,7 @@
           <select class="form-select" id="menu_id" name="menu_id">
             <option value="">Tous les menus</option>
             {% for m in menus %}
-            <option value="{{ m.id }}" {% if m.id == menu_id_filtre %}selected{% endif %}>{{ m.titre }}</option>
+            <option value="{{ m.id }}" {% if m.id|string == menu_id_filtre %}selected{% endif %}>{{ m.titre }}</option>
             {% endfor %}
           </select>
         </div>
@@ -39,7 +39,7 @@
     </div>
   </form>
 
-  <!-- Tableau CA (PostgreSQL) -->
+  <!-- Tableau CA par menu -->
   <div class="card border-0 shadow-sm mb-5">
     <div class="card-header fw-semibold">
       <i class="bi bi-table me-2" aria-hidden="true"></i>Chiffre d'affaires par menu
@@ -82,8 +82,8 @@
     </div>
   </div>
 
-  <!-- Graphique comparatif (MongoDB) -->
-  {% if stats_mongo %}
+  <!-- Graphiques comparatifs (mêmes données que le tableau, filtres appliqués) -->
+  {% if resultats_ca %}
   <div class="row g-4">
     <div class="col-lg-6">
       <div class="card border-0 shadow-sm">
@@ -113,11 +113,11 @@
 {% endblock %}
 
 {% block scripts %}
-{% if stats_mongo %}
+{% if resultats_ca %}
 <script>
-const labels = {{ stats_mongo | map(attribute='menu_titre') | list | tojson }};
-const counts = {{ stats_mongo | map(attribute='count') | list | tojson }};
-const cas = {{ stats_mongo | map(attribute='chiffre_affaires') | list | tojson }};
+const labels = {{ resultats_ca | map(attribute='titre') | list | tojson }};
+const counts = {{ resultats_ca | map(attribute='nb_commandes') | list | tojson }};
+const cas = {{ resultats_ca | map(attribute='ca') | list | tojson }};
 const couleurs = ['#6f42c1','#0d6efd','#198754','#fd7e14','#dc3545','#0dcaf0','#ffc107'];
 
 new Chart(document.getElementById('graphNbCommandes'), {

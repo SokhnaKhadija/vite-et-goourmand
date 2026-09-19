@@ -26,7 +26,7 @@
                 <label for="theme_id" class="form-label fw-semibold">Thème <span class="text-danger">*</span></label>
                 <select class="form-select" id="theme_id" name="theme_id" required>
                   {% for t in themes %}
-                  <option value="{{ t.id }}" {% if menu and menu.theme_id == t.id %}selected{% endif %}>{{ t.libelle }}</option>
+                  <option value="{{ t.id }}" {% if menu and menu.theme == t %}selected{% endif %}>{{ t.libelle }}</option>
                   {% endfor %}
                 </select>
               </div>
@@ -34,7 +34,7 @@
                 <label for="regime_id" class="form-label fw-semibold">Régime <span class="text-danger">*</span></label>
                 <select class="form-select" id="regime_id" name="regime_id" required>
                   {% for r in regimes %}
-                  <option value="{{ r.id }}" {% if menu and menu.regime_id == r.id %}selected{% endif %}>{{ r.libelle }}</option>
+                  <option value="{{ r.id }}" {% if menu and menu.regime == r %}selected{% endif %}>{{ r.libelle }}</option>
                   {% endfor %}
                 </select>
               </div>

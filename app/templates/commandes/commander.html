@@ -90,7 +90,7 @@
           <option value="{{ m.id }}"
                   data-min="{{ m.nb_personnes_min }}"
                   data-conditions="{{ m.conditions or '' }}"
-                  {% if m.id == menu_preselectionne_id %}selected{% endif %}>
+                  {% if m.id|string == menu_preselectionne_id|string %}selected{% endif %}>
             {{ m.titre }} — À partir de {{ m.nb_personnes_min }} pers. / {{ "%.2f"|format(m.prix_base) }} €
           </option>
           {% endfor %}

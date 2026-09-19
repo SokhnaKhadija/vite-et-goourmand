@@ -1,8 +1,7 @@
 import re
 from flask import Blueprint, render_template, request, flash, redirect, url_for, abort
 from flask_login import login_required, current_user
-from ..models import db, Commande, SuiviCommande, Avis, Utilisateur
-from ..utils.decorateurs import role_requis
+from ..models import Commande, SuiviCommande, Avis, Menu, charger_ou_404
 
 bp = Blueprint('utilisateur', __name__)
 
@@ -37,7 +36,7 @@ def profil():
                 return redirect(url_for('utilisateur.profil'))
             current_user.set_password(nouveau_mdp)
 
-        db.session.commit()
+        current_user.save()
         flash("Profil mis à jour.", 'success')
         return redirect(url_for('utilisateur.profil'))
 
@@ -47,27 +46,25 @@ def profil():
 @bp.route('/commandes')
 @login_required
 def mes_commandes():
-    commandes = (Commande.query
-                 .filter_by(utilisateur_id=current_user.id)
-                 .order_by(Commande.date_commande.desc())
-                 .all())
+    commandes = list(Commande.objects(utilisateur=current_user.id)
+                     .order_by('-date_commande').select_related())
     return render_template('utilisateur/commandes.html', commandes=commandes)
 
 
-@bp.route('/commandes/<int:commande_id>')
+@bp.route('/commandes/<commande_id>')
 @login_required
 def detail_commande(commande_id):
-    commande = Commande.query.get_or_404(commande_id)
-    if commande.utilisateur_id != current_user.id:
+    commande = charger_ou_404(Commande, commande_id)
+    if commande.utilisateur.id != current_user.id:
         abort(403)
     return render_template('utilisateur/detail_commande.html', commande=commande)
 
 
-@bp.route('/commandes/<int:commande_id>/modifier', methods=['GET', 'POST'])
+@bp.route('/commandes/<commande_id>/modifier', methods=['GET', 'POST'])
 @login_required
 def modifier_commande(commande_id):
-    commande = Commande.query.get_or_404(commande_id)
-    if commande.utilisateur_id != current_user.id:
+    commande = charger_ou_404(Commande, commande_id)
+    if commande.utilisateur.id != current_user.id:
         abort(403)
     if not commande.peut_etre_modifiee:
         flash("Cette commande ne peut plus être modifiée.", 'warning')
@@ -98,37 +95,36 @@ def modifier_commande(commande_id):
         commande.prix_livraison = _calculer_livraison(commande.ville_livraison)
         commande.prix_total = round(commande.prix_menu + commande.prix_livraison, 2)
 
-        db.session.commit()
+        commande.save()
         flash("Commande modifiée avec succès.", 'success')
         return redirect(url_for('utilisateur.detail_commande', commande_id=commande_id))
 
     return render_template('utilisateur/modifier_commande.html', commande=commande)
 
 
-@bp.route('/commandes/<int:commande_id>/annuler', methods=['POST'])
+@bp.route('/commandes/<commande_id>/annuler', methods=['POST'])
 @login_required
 def annuler_commande(commande_id):
-    commande = Commande.query.get_or_404(commande_id)
-    if commande.utilisateur_id != current_user.id:
+    commande = charger_ou_404(Commande, commande_id)
+    if commande.utilisateur.id != current_user.id:
         abort(403)
     if not commande.peut_etre_modifiee:
         flash("Cette commande ne peut plus être annulée.", 'warning')
         return redirect(url_for('utilisateur.detail_commande', commande_id=commande_id))
 
     commande.statut = 'annulee'
-    commande.menu.stock += 1
-    suivi = SuiviCommande(commande_id=commande.id, statut='annulee')
-    db.session.add(suivi)
-    db.session.commit()
+    commande.suivis.append(SuiviCommande(statut='annulee'))
+    commande.save()
+    Menu.objects(id=commande.menu.id).update_one(inc__stock=1)
     flash("Commande annulée.", 'info')
     return redirect(url_for('utilisateur.mes_commandes'))
 
 
-@bp.route('/commandes/<int:commande_id>/avis', methods=['GET', 'POST'])
+@bp.route('/commandes/<commande_id>/avis', methods=['GET', 'POST'])
 @login_required
 def donner_avis(commande_id):
-    commande = Commande.query.get_or_404(commande_id)
-    if commande.utilisateur_id != current_user.id:
+    commande = charger_ou_404(Commande, commande_id)
+    if commande.utilisateur.id != current_user.id:
         abort(403)
     if commande.statut != 'terminee':
         flash("Vous ne pouvez laisser un avis que sur une commande terminée.", 'warning')
@@ -144,15 +140,13 @@ def donner_avis(commande_id):
         if not note or note < 1 or note > 5:
             flash("La note doit être comprise entre 1 et 5.", 'danger')
         else:
-            avis = Avis(
-                utilisateur_id=current_user.id,
-                commande_id=commande.id,
+            Avis(
+                utilisateur=current_user._get_current_object(),
+                commande=commande,
                 note=note,
                 commentaire=commentaire,
                 statut='en_attente'
-            )
-            db.session.add(avis)
-            db.session.commit()
+            ).save()
             flash("Votre avis a bien été soumis et sera publié après validation.", 'success')
             return redirect(url_for('utilisateur.detail_commande', commande_id=commande_id))
 

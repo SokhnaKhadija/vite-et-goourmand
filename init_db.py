@@ -1,146 +1,115 @@
 #!/usr/bin/env python3
 """
-Script d'initialisation de la base de données Vite & Gourmand.
-- Crée la base PostgreSQL si elle n'existe pas encore
-- Exécute database.sql (schéma + données de démo)
+Script d'initialisation de la base de données MongoDB de Vite & Gourmand.
 
-Fonctionne via le conteneur Docker PostgreSQL (docker exec).
+- Se connecte à MongoDB avec MONGO_URI / MONGO_DBNAME (fichier .env)
+- Crée les collections et leurs index (uniques, TTL, recherche)
+- Alimente la base : thèmes, régimes, allergènes, horaires, compte administrateur
+  et données de démonstration (plats + menus)
+
+Le script est relançable sans risque : les éléments déjà présents ne sont pas dupliqués.
 
 Usage :
-    python init_db.py
+    python init_db.py              # initialise / complète la base
+    python init_db.py --reset      # SUPPRIME la base puis la recrée (confirmation demandée)
+    python init_db.py --reset -y   # idem, sans confirmation
+    python init_db.py --sans-demo  # sans les plats/menus de démonstration
 """
 
-import os
+import argparse
+import re
 import sys
-import subprocess
 
-from dotenv import load_dotenv
-from urllib.parse import urlparse
+from mongoengine import connect
+from mongoengine.connection import get_connection
+from pymongo.errors import PyMongoError
 
-load_dotenv()
+try:
+    from config import Config
+except RuntimeError as erreur:  # variable .env obligatoire manquante
+    sys.exit(f"Erreur de configuration : {erreur}")
 
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://postgres:password@localhost/vite_et_gourmand"
-)
-
-SQL_FILE = os.path.join(os.path.dirname(__file__), "database.sql")
-
-# Nom du conteneur Docker PostgreSQL
-DOCKER_CONTAINER = "postgres-servicesgal-dev"
+from app.models import DOCUMENTS
+from app import seed
 
 
-def parse_url(url: str) -> dict:
-    """Décompose l'URL PostgreSQL en ses composants."""
-    parsed = urlparse(url)
-    return {
-        "user":     parsed.username or "postgres",
-        "password": parsed.password or "",
-        "host":     parsed.hostname or "localhost",
-        "port":     str(parsed.port or 5432),
-        "dbname":   parsed.path.lstrip("/"),
-    }
+def masquer_identifiants(uri: str) -> str:
+    """Masque 'utilisateur:motdepasse@' dans une URI MongoDB avant affichage."""
+    return re.sub(r'//[^@/]+@', '//***@', uri)
 
 
-def run_docker_psql(params: dict, command: str = None, sql_content: str = None,
-                    dbname: str = None) -> int:
-    """Exécute une commande psql dans le conteneur Docker."""
-    db = dbname or params["dbname"]
-    env = {"PGPASSWORD": params["password"]} if params["password"] else {}
-
-    env_args = []
-    for k, v in env.items():
-        env_args += ["-e", f"{k}={v}"]
-
-    psql_cmd = [
-        "psql",
-        "-U", params["user"],
-        "-d", db,
-    ]
-
-    if command:
-        psql_cmd += ["-c", command]
-
-    docker_cmd = ["docker", "exec", "-i"] + env_args + [DOCKER_CONTAINER] + psql_cmd
-
-    if sql_content is not None:
-        result = subprocess.run(docker_cmd, input=sql_content, text=True)
-    else:
-        result = subprocess.run(docker_cmd)
-
-    return result.returncode
-
-
-def create_database_if_missing(params: dict) -> None:
-    """Crée la base de données si elle n'existe pas."""
-    env_args = []
-    if params["password"]:
-        env_args = ["-e", f"PGPASSWORD={params['password']}"]
-
-    check = subprocess.run(
-        [
-            "docker", "exec", "-i"
-        ] + env_args + [
-            DOCKER_CONTAINER,
-            "psql", "-U", params["user"], "-d", "postgres",
-            "-tAc",
-            f"SELECT 1 FROM pg_database WHERE datname='{params['dbname']}'",
-        ],
-        capture_output=True,
-        text=True,
-    )
-
-    if check.returncode != 0:
-        print("Erreur : impossible de se connecter au conteneur PostgreSQL.")
-        print(check.stderr.strip())
+def se_connecter():
+    """Ouvre la connexion et vérifie que le serveur répond."""
+    connect(db=Config.MONGO_DBNAME, host=Config.MONGO_URI, serverSelectionTimeoutMS=5000)
+    try:
+        get_connection().admin.command('ping')
+    except PyMongoError as erreur:
+        print("Erreur : impossible de se connecter à MongoDB.")
+        print("Vérifiez que le serveur est démarré et que MONGO_URI est correct dans .env.")
+        print(f"Détail : {erreur}")
         sys.exit(1)
 
-    if check.stdout.strip() == "1":
-        print(f"Base de données '{params['dbname']}' déjà existante.")
-    else:
-        print(f"Création de la base de données '{params['dbname']}'...")
-        code = run_docker_psql(
-            params,
-            command=f"CREATE DATABASE {params['dbname']};",
-            dbname="postgres"
+
+def reinitialiser_base(confirme: bool) -> None:
+    """Supprime toute la base (équivalent des DROP TABLE de l'ancien database.sql)."""
+    if not confirme:
+        reponse = input(
+            f"⚠ Toutes les données de la base '{Config.MONGO_DBNAME}' vont être SUPPRIMÉES. "
+            "Tapez le nom de la base pour confirmer : "
         )
-        if code != 0:
-            print("Erreur lors de la création de la base de données.")
-            sys.exit(1)
-        print("Base de données créée avec succès.")
+        if reponse.strip() != Config.MONGO_DBNAME:
+            print("Annulé : la base n'a pas été modifiée.")
+            sys.exit(0)
+    get_connection().drop_database(Config.MONGO_DBNAME)
+    print(f"Base '{Config.MONGO_DBNAME}' supprimée.")
 
 
-def import_sql(params: dict) -> None:
-    """Importe le fichier database.sql dans la base via docker exec."""
-    if not os.path.isfile(SQL_FILE):
-        print(f"Fichier introuvable : {SQL_FILE}")
-        sys.exit(1)
-
-    print(f"Import de 'database.sql' dans '{params['dbname']}'...")
-
-    with open(SQL_FILE, "r", encoding="utf-8") as f:
-        sql_content = f.read()
-
-    code = run_docker_psql(params, sql_content=sql_content)
-    if code != 0:
-        print("Erreur lors de l'import du fichier SQL.")
-        sys.exit(1)
-    print("Import réussi. La base de données est prête.")
+def creer_index() -> None:
+    """Crée explicitement les index déclarés dans les modèles."""
+    for modele in DOCUMENTS:
+        modele.ensure_indexes()
+    print(f"Collections et index créés ({len(DOCUMENTS)} collections).")
 
 
-if __name__ == "__main__":
-    params = parse_url(DATABASE_URL)
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Initialisation de la base MongoDB.")
+    parser.add_argument('--reset', action='store_true',
+                        help="supprime la base avant de la recréer")
+    parser.add_argument('-y', '--yes', action='store_true',
+                        help="ne pas demander de confirmation pour --reset")
+    parser.add_argument('--sans-demo', action='store_true',
+                        help="ne pas charger les plats et menus de démonstration")
+    args = parser.parse_args()
 
     print("=" * 50)
     print("  Initialisation — Vite & Gourmand")
     print("=" * 50)
-    print(f"  Conteneur : {DOCKER_CONTAINER}")
-    print(f"  Base      : {params['dbname']}")
-    print(f"  Utilisateur : {params['user']}")
+    print(f"  Serveur : {masquer_identifiants(Config.MONGO_URI)}")
+    print(f"  Base    : {Config.MONGO_DBNAME}")
     print("=" * 50)
 
-    create_database_if_missing(params)
-    import_sql(params)
+    se_connecter()
+
+    if args.reset:
+        reinitialiser_base(confirme=args.yes)
+
+    creer_index()
+
+    seed.initialiser_references()
+    print("Données de référence prêtes (thèmes, régimes, allergènes, horaires).")
+
+    if seed.creer_admin(Config.ADMIN_EMAIL, Config.ADMIN_PASSWORD):
+        print(f"Compte administrateur créé : {Config.ADMIN_EMAIL}")
+    else:
+        print(f"Compte administrateur déjà existant : {Config.ADMIN_EMAIL}")
+
+    if not args.sans_demo:
+        plats, menus = seed.charger_demo()
+        print(f"Données de démonstration : {plats} plat(s) et {menus} menu(s) ajouté(s).")
 
     print()
-    print("Démarrez maintenant l'application avec : python run.py")
+    print("Base de données prête. Démarrez l'application avec : python run.py")
+
+
+if __name__ == "__main__":
+    main()

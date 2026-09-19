@@ -5,10 +5,9 @@
 | Composant | Technologie | Justification |
 |-----------|-------------|---------------|
 | **Backend** | Python 3.11 + Flask 3 | Léger, flexible, excellent écosystème Python |
-| **ORM** | Flask-SQLAlchemy | Abstraction de la BDD, gestion des relations |
+| **ODM** | MongoEngine (PyMongo) | Documents Python, références, index et règles de suppression |
 | **Authentification** | Flask-Login + bcrypt | Gestion de session sécurisée, hashage robuste |
-| **BDD relationnelle** | PostgreSQL 16 | Fiabilité, contraintes d'intégrité, performances |
-| **BDD NoSQL** | MongoDB | Statistiques flexibles, documents JSON natifs |
+| **Base de données** | MongoDB 6+ | Base unique : documents JSON natifs, agrégations pour les statistiques |
 | **Frontend** | Bootstrap 5.3 + Jinja2 | Rendu côté serveur, accessibilité, réactivité |
 | **Graphiques** | Chart.js | Bibliothèque légère, sans dépendance framework |
 
@@ -20,7 +19,8 @@
 ViteEtGourmand/
 ├── app/
 │   ├── __init__.py          # Factory Flask, initialisation BDD
-│   ├── models.py            # Modèles SQLAlchemy (PostgreSQL)
+│   ├── models.py            # Documents MongoEngine (collections MongoDB)
+│   ├── seed.py              # Alimentation : références, admin, données de démo
 │   ├── routes/
 │   │   ├── main.py          # Accueil, contact, pages statiques
 │   │   ├── auth.py          # Connexion, inscription, mot de passe
@@ -34,10 +34,10 @@ ViteEtGourmand/
 │   │   └── decorateurs.py   # Décorateurs de contrôle d'accès
 │   ├── templates/           # Templates Jinja2 (HTML)
 │   └── static/              # CSS, JS, uploads
-├── config.py                # Configuration centralisée
+├── config.py                # Configuration centralisée (lit le fichier .env)
 ├── run.py                   # Point d'entrée
+├── init_db.py               # Initialisation de la base MongoDB
 ├── requirements.txt
-├── database.sql             # Schéma + données de démonstration
 └── docs/
     └── architecture.md      # Ce fichier
 ```
@@ -67,10 +67,35 @@ UTILISATEUR ──> ROLE
 UTILISATEUR ──< TOKEN_REINITIALISATION
 ```
 
-### Tables principales
+### Collections MongoDB
 
-| Table | Description |
-|-------|-------------|
+| Collection | Description | Choix de modélisation |
+|------------|-------------|-----------------------|
+| `utilisateur` | Clients, employés, administrateurs | `role` est un champ (`utilisateur` / `employe` / `administrateur`) — la table `role` disparaît ; index unique sur `email` |
+| `token_reinitialisation` | Jetons de réinitialisation de mot de passe | Référence vers `utilisateur` ; **index TTL** sur `expiration` (suppression automatique) |
+| `theme`, `regime`, `allergene` | Référentiels | Collections séparées, référencées par les menus et les plats |
+| `plat` | Entrées, plats, desserts réutilisables | `allergenes` : liste de références (remplace `plat_allergene`) |
+| `menu` | Menus proposés | `plats` : liste de références (remplace `menu_plat`) ; `images` : **documents embarqués** (remplace `image_menu`) |
+| `commande` | Commandes des clients | Références vers `utilisateur` et `menu` ; `suivis` : **historique embarqué** (remplace `suivi_commande`) ; `numero` unique |
+| `avis` | Avis clients | Références vers `utilisateur` et `commande` ; index unique sur `commande` (un avis par commande) |
+| `horaire` | Horaires d'ouverture | Un document par jour, trié par le champ `ordre` |
+
+Règles d'intégrité (remplacent les `ON DELETE` de PostgreSQL) :
+- un menu ou un utilisateur référencé par des commandes ne peut pas être supprimé (`DENY`) ;
+- la suppression d'un plat ou d'un allergène le retire des listes qui le référencent (`PULL`) ;
+- la suppression d'un utilisateur supprime ses tokens de réinitialisation (`CASCADE`).
+
+Identifiants : les documents utilisent des `ObjectId` MongoDB (24 caractères hexadécimaux) à la place
+des entiers auto-incrémentés ; ils apparaissent tels quels dans les URL.
+
+Statistiques : le chiffre d'affaires et le nombre de commandes par menu sont calculés à la demande par
+une agrégation (`$group` + `$lookup`) sur la collection `commande`, avec les filtres période / menu.
+Il n'y a plus de collection de compteurs séparée à maintenir.
+
+Stock : la réservation d'un menu utilise une décrémentation atomique conditionnelle
+(`stock > 0`), ce qui évite la survente lorsque deux clients commandent en même temps.
+
+-------|-------------|
 | `utilisateur` | Clients, employés, administrateurs |
 | `role` | utilisateur / employe / administrateur |
 | `menu` | Menus proposés par Vite & Gourmand |
