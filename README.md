@@ -85,6 +85,29 @@ L'application est accessible sur [http://localhost:5001](http://localhost:5001)
 
 ---
 
+## Déploiement sur Render
+
+Créez un **Web Service** relié au dépôt, avec :
+
+| Réglage | Valeur |
+|---------|--------|
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `python init_db.py --sans-demo && gunicorn run:app` |
+
+`gunicorn` écoute automatiquement sur `0.0.0.0:$PORT` (le port imposé par Render). Ne lancez pas
+`python run.py` en production : c'est le serveur de développement, limité à `127.0.0.1`.
+
+Variables d'environnement à définir dans Render (onglet *Environment*) :
+
+- `SECRET_KEY`, `MONGO_URI` (Atlas), `ADMIN_EMAIL`, `ADMIN_PASSWORD` : obligatoires ;
+- `FLASK_DEBUG=false` ;
+- `APP_BASE_URL` : l'URL publique du service (ex. `https://mon-app.onrender.com`).
+
+> Le disque de Render est éphémère : les images uploadées depuis l'espace employé disparaissent à
+> chaque redéploiement. Pour les conserver, utilisez un *Persistent Disk* ou un stockage externe.
+
+---
+
 ## Comptes de démonstration
 
 | Rôle | Email | Mot de passe |
