@@ -14,7 +14,7 @@ def role_requis(*roles):
             if not current_user.actif:
                 flash("Votre compte est désactivé. Contactez l'administrateur.", "danger")
                 return redirect(url_for('main.accueil'))
-            if current_user.role.libelle not in roles:
+            if current_user.role not in roles:
                 abort(403)
             return f(*args, **kwargs)
         return enveloppe

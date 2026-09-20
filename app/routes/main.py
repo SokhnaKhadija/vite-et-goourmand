@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for
-from ..models import db, Avis, Horaire
+from ..models import Avis, Horaire
 from ..utils.email import envoyer_contact
 
 bp = Blueprint('main', __name__)
@@ -7,8 +7,8 @@ bp = Blueprint('main', __name__)
 
 @bp.route('/')
 def accueil():
-    avis_valides = Avis.query.filter_by(statut='valide').order_by(Avis.created_at.desc()).limit(6).all()
-    horaires = Horaire.query.order_by(Horaire.id).all()
+    avis_valides = list(Avis.objects(statut='valide').order_by('-created_at').limit(6))
+    horaires = list(Horaire.objects)
     return render_template('index.html', avis=avis_valides, horaires=horaires)
 
 

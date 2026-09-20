@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, flash, redirect, url_for
 from flask_login import login_user, logout_user, current_user
-from ..models import db, Utilisateur, Role, TokenReinitialisation
+from ..models import Utilisateur, TokenReinitialisation
 from ..utils.email import envoyer_bienvenue, envoyer_reinitialisation
 
 bp = Blueprint('auth', __name__)
@@ -22,7 +22,7 @@ def connexion():
         email = request.form.get('email', '').strip().lower()
         mot_de_passe = request.form.get('mot_de_passe', '')
 
-        utilisateur = Utilisateur.query.filter_by(email=email).first()
+        utilisateur = Utilisateur.objects(email=email).first()
         if utilisateur and utilisateur.check_password(mot_de_passe):
             if not utilisateur.actif:
                 flash("Votre compte est désactivé. Contactez l'administrateur.", 'danger')
@@ -68,7 +68,7 @@ def inscription():
             erreurs.append("Le prénom est obligatoire.")
         if not email:
             erreurs.append("L'adresse e-mail est obligatoire.")
-        elif Utilisateur.query.filter_by(email=email).first():
+        elif Utilisateur.objects(email=email).first():
             erreurs.append("Cette adresse e-mail est déjà utilisée.")
         if not telephone:
             erreurs.append("Le numéro de téléphone est obligatoire.")
@@ -88,7 +88,6 @@ def inscription():
             for e in erreurs:
                 flash(e, 'danger')
         else:
-            role_utilisateur = Role.query.filter_by(libelle='utilisateur').first()
             nouvel_utilisateur = Utilisateur(
                 nom=nom,
                 prenom=prenom,
@@ -97,12 +96,11 @@ def inscription():
                 adresse=adresse,
                 ville=ville,
                 code_postal=code_postal,
-                role_id=role_utilisateur.id,
+                role='utilisateur',
                 actif=True
             )
             nouvel_utilisateur.set_password(mot_de_passe)
-            db.session.add(nouvel_utilisateur)
-            db.session.commit()
+            nouvel_utilisateur.save()
             envoyer_bienvenue(nouvel_utilisateur)
             flash("Votre compte a été créé avec succès. Vous pouvez maintenant vous connecter.", 'success')
             return redirect(url_for('auth.connexion'))
@@ -114,18 +112,16 @@ def inscription():
 def mot_de_passe_oublie():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
-        utilisateur = Utilisateur.query.filter_by(email=email).first()
+        utilisateur = Utilisateur.objects(email=email).first()
         # On retourne toujours le même message pour ne pas divulguer les emails existants
         if utilisateur and utilisateur.actif:
             token = uuid.uuid4().hex
             expiration = datetime.utcnow() + timedelta(hours=1)
-            t = TokenReinitialisation(
-                utilisateur_id=utilisateur.id,
+            TokenReinitialisation(
+                utilisateur=utilisateur,
                 token=token,
                 expiration=expiration
-            )
-            db.session.add(t)
-            db.session.commit()
+            ).save()
             lien = url_for('auth.reinitialiser_mot_de_passe', token=token, _external=True)
             envoyer_reinitialisation(utilisateur, lien)
         flash("Si cette adresse e-mail est enregistrée, un lien de réinitialisation vous a été envoyé.", 'info')
@@ -136,7 +132,7 @@ def mot_de_passe_oublie():
 
 @bp.route('/reinitialiser-mot-de-passe/<token>', methods=['GET', 'POST'])
 def reinitialiser_mot_de_passe(token):
-    t = TokenReinitialisation.query.filter_by(token=token, utilise=False).first()
+    t = TokenReinitialisation.objects(token=token, utilise=False).first()
     if not t or t.expiration < datetime.utcnow():
         flash("Ce lien est invalide ou a expiré.", 'danger')
         return redirect(url_for('auth.mot_de_passe_oublie'))
@@ -154,9 +150,11 @@ def reinitialiser_mot_de_passe(token):
         elif nouveau != confirmation:
             flash("Les mots de passe ne correspondent pas.", 'danger')
         else:
-            t.utilisateur.set_password(nouveau)
+            utilisateur = t.utilisateur
+            utilisateur.set_password(nouveau)
+            utilisateur.save()
             t.utilise = True
-            db.session.commit()
+            t.save()
             flash("Mot de passe réinitialisé avec succès.", 'success')
             return redirect(url_for('auth.connexion'))
 

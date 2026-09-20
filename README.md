@@ -1,14 +1,13 @@
 # 🍽️ Vite & Gourmand — Application Web Traiteur
 
 Application web complète pour le traiteur bordelais **Vite & Gourmand**.
-Développée avec **Python / Flask**, **PostgreSQL**, **MongoDB** et **Bootstrap 5**.
+Développée avec **Python / Flask**, **MongoDB** (base de données unique) et **Bootstrap 5**.
 
 ---
 
 ## Prérequis
 
 - Python 3.11+
-- PostgreSQL 15+
 - MongoDB 6+ (local ou [Atlas gratuit](https://www.mongodb.com/atlas))
 - pip
 
@@ -43,44 +42,37 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Éditez `.env` et renseignez vos valeurs :
+Éditez `.env` et renseignez vos valeurs. `SECRET_KEY`, `MONGO_URI`, `ADMIN_EMAIL` et
+`ADMIN_PASSWORD` sont **obligatoires** (aucune valeur par défaut dans le code) :
 
-```env
-SECRET_KEY=votre-cle-secrete-tres-longue
-DATABASE_URL=postgresql://postgres:motdepasse@localhost/vite_et_gourmand
-MONGO_URI=mongodb://localhost:27017/
-ADMIN_EMAIL=jose@viteetsourmand.fr
-ADMIN_PASSWORD=Admin@VG2025!
-```
+| Variable | Rôle | Défaut |
+|----------|------|--------|
+| `SECRET_KEY` | Clé de signature des sessions | — (obligatoire) |
+| `MONGO_URI` | URI de connexion MongoDB (local ou Atlas) | — (obligatoire) |
+| `MONGO_DBNAME` | Nom de la base | `vite_et_gourmand` |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Compte administrateur initial | — (obligatoire) |
+| `FLASK_HOST` / `FLASK_PORT` / `FLASK_DEBUG` | Serveur de développement | `127.0.0.1` / `5001` / `true` |
+| `APP_BASE_URL` | URL utilisée dans les liens des e-mails | `http://localhost:5001` |
+| `CONTACT_EMAIL` | Destinataire du formulaire de contact | `contact@viteetsourmand.fr` |
+| `MAIL_LOG_FILE` | Fichier des e-mails simulés | `emails.log` |
+| `MAX_UPLOAD_MB` | Taille maximale d'un upload | `16` |
+| `VILLE_LIVRAISON_GRATUITE` | Ville où la livraison est gratuite | `Bordeaux` |
+| `FRAIS_LIVRAISON_HORS_ZONE` | Forfait de livraison ailleurs (€) | `15` |
 
-### 5. Initialiser la base de données PostgreSQL
+### 5. Initialiser la base de données MongoDB
 
-Un script dédié crée automatiquement la base si elle n'existe pas, puis importe le schéma et les données de démonstration depuis `database.sql`.
+Assurez-vous que MongoDB est démarré, puis lancez le script d'initialisation. Il crée les collections et
+leurs index, puis alimente la base : thèmes, régimes, allergènes, horaires, compte administrateur et
+données de démonstration (9 plats, 3 menus).
 
 ```bash
-python init_db.py
+python init_db.py              # initialise / complète la base (relançable sans doublons)
+python init_db.py --reset      # supprime la base puis la recrée (confirmation demandée)
+python init_db.py --sans-demo  # sans les plats et menus de démonstration
 ```
 
-Le script affiche le résultat de chaque étape :
-
-```
-==================================================
-  Initialisation — Vite & Gourmand
-==================================================
-  Hôte     : localhost:5432
-  Base     : vite_et_gourmand
-  Utilisateur : postgres
-==================================================
-Création de la base de données 'vite_et_gourmand'...
-Base de données créée avec succès.
-Import de 'database.sql' dans 'vite_et_gourmand'...
-Import réussi. La base de données est prête.
-
-Démarrez maintenant l'application avec : python run.py
-```
-
-> **Note :** Le script `run.py` initialise également le compte administrateur
-> au premier démarrage si la base est vide.
+> **Note :** au démarrage, `run.py` crée aussi les données de référence et le compte administrateur
+> s'ils sont absents, mais pas les données de démonstration.
 
 ### 6. Lancer l'application
 
@@ -88,7 +80,31 @@ Démarrez maintenant l'application avec : python run.py
 python run.py
 ```
 
-L'application est accessible sur [http://localhost:5000](http://localhost:5000)
+L'application est accessible sur [http://localhost:5001](http://localhost:5001)
+(port modifiable via `FLASK_PORT` dans `.env`)
+
+---
+
+## Déploiement sur Render
+
+Créez un **Web Service** relié au dépôt, avec :
+
+| Réglage | Valeur |
+|---------|--------|
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `python init_db.py --sans-demo && gunicorn run:app` |
+
+`gunicorn` écoute automatiquement sur `0.0.0.0:$PORT` (le port imposé par Render). Ne lancez pas
+`python run.py` en production : c'est le serveur de développement, limité à `127.0.0.1`.
+
+Variables d'environnement à définir dans Render (onglet *Environment*) :
+
+- `SECRET_KEY`, `MONGO_URI` (Atlas), `ADMIN_EMAIL`, `ADMIN_PASSWORD` : obligatoires ;
+- `FLASK_DEBUG=false` ;
+- `APP_BASE_URL` : l'URL publique du service (ex. `https://mon-app.onrender.com`).
+
+> Le disque de Render est éphémère : les images uploadées depuis l'espace employé disparaissent à
+> chaque redéploiement. Pour les conserver, utilisez un *Persistent Disk* ou un stockage externe.
 
 ---
 
@@ -108,7 +124,8 @@ L'application est accessible sur [http://localhost:5000](http://localhost:5000)
 ViteEtGourmand/
 ├── app/
 │   ├── __init__.py          # Factory Flask
-│   ├── models.py            # Modèles SQLAlchemy
+│   ├── models.py            # Documents MongoEngine (collections MongoDB)
+│   ├── seed.py              # Alimentation : références, admin, données de démo
 │   ├── routes/              # Blueprints Flask
 │   ├── templates/           # Templates Jinja2
 │   ├── static/
@@ -120,9 +137,8 @@ ViteEtGourmand/
 │       └── decorateurs.py   # Contrôle d'accès par rôle
 ├── config.py                # Configuration
 ├── run.py                   # Point d'entrée
-├── init_db.py               # Script d'initialisation de la BDD
+├── init_db.py               # Script d'initialisation de la base MongoDB
 ├── requirements.txt
-├── database.sql             # Schéma SQL + données de démo
 ├── .env.example
 └── docs/
     └── architecture.md      # Documentation technique complète
@@ -158,7 +174,7 @@ ViteEtGourmand/
 - Toutes les fonctionnalités employé
 - Création / désactivation de comptes employés
 - Statistiques et CA par menu (filtres par période / menu)
-- Graphiques comparatifs (données MongoDB + Chart.js)
+- Graphiques comparatifs (agrégations MongoDB + Chart.js)
 
 ---
 
@@ -168,12 +184,10 @@ ViteEtGourmand/
 |-----------|---------|
 | Python | 3.11+ |
 | Flask | 3.0.3 |
-| Flask-SQLAlchemy | 3.1.1 |
+| MongoEngine | 0.29.3 |
 | Flask-Login | 0.6.3 |
 | bcrypt | 4.1.3 |
-| psycopg2 | 2.9.9 |
 | PyMongo | 4.7.1 |
-| PostgreSQL | 15+ |
 | MongoDB | 6+ |
 | Bootstrap | 5.3.3 |
 | Chart.js | 4.4.3 |

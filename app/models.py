@@ -1,57 +1,78 @@
 from datetime import datetime
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin
+
 import bcrypt
-
-db = SQLAlchemy()
-
-# ─────────────────────────────────────────────
-# Tables de jointure many-to-many
-# ─────────────────────────────────────────────
-
-menu_plat = db.Table(
-    'menu_plat',
-    db.Column('menu_id', db.Integer, db.ForeignKey('menu.id', ondelete='CASCADE'), primary_key=True),
-    db.Column('plat_id', db.Integer, db.ForeignKey('plat.id', ondelete='CASCADE'), primary_key=True)
+from bson import ObjectId
+from flask import abort
+from flask_login import UserMixin
+from mongoengine import (
+    Document, EmbeddedDocument,
+    StringField, IntField, FloatField, BooleanField, DateTimeField, DateField,
+    ListField, ReferenceField, EmbeddedDocumentListField, ObjectIdField,
+    DENY, PULL, CASCADE, ValidationError,
 )
 
-plat_allergene = db.Table(
-    'plat_allergene',
-    db.Column('plat_id', db.Integer, db.ForeignKey('plat.id', ondelete='CASCADE'), primary_key=True),
-    db.Column('allergene_id', db.Integer, db.ForeignKey('allergene.id', ondelete='CASCADE'), primary_key=True)
-)
+# Modèle de données MongoDB (MongoEngine)
+#
+#  - Les tables de jointure SQL (menu_plat, plat_allergene) deviennent des listes
+#    de références dans `Menu.plats` et `Plat.allergenes`.
+#  - Les entités qui n'existent que pour leur parent sont *embarquées* :
+#    `Menu.images` et `Commande.suivis`.
+#  - Le rôle n'est plus une table : c'est un champ `Utilisateur.role`.
+#  - Les clés étrangères deviennent des `ReferenceField` ; `reverse_delete_rule`
+#    remplace les ON DELETE de PostgreSQL (DENY = refuser, PULL = retirer de la liste,
+#    CASCADE = supprimer aussi les documents liés).
 
 
 # ─────────────────────────────────────────────
-# Rôle
+# Utilitaires d'accès aux documents
 # ─────────────────────────────────────────────
 
-class Role(db.Model):
-    __tablename__ = 'role'
-    id = db.Column(db.Integer, primary_key=True)
-    libelle = db.Column(db.String(50), unique=True, nullable=False)
-    # 'utilisateur', 'employe', 'administrateur'
+def charger(modele, identifiant):
+    """Retourne le document dont l'id est `identifiant` (str ou ObjectId), ou None.
+
+    Tolère les identifiants invalides (ex. URL bricolée) au lieu de lever une erreur.
+    """
+    if not identifiant:
+        return None
+    try:
+        return modele.objects(id=identifiant).first()
+    except (ValidationError, TypeError):
+        return None
+
+
+def charger_ou_404(modele, identifiant):
+    document = charger(modele, identifiant)
+    if document is None:
+        abort(404)
+    return document
+
+
+def convertir_ids(valeurs):
+    """Convertit une liste de chaînes en ObjectId en ignorant les valeurs invalides."""
+    return [ObjectId(v) for v in valeurs if ObjectId.is_valid(v)]
 
 
 # ─────────────────────────────────────────────
 # Utilisateur
 # ─────────────────────────────────────────────
 
-class Utilisateur(db.Model, UserMixin):
-    __tablename__ = 'utilisateur'
-    id = db.Column(db.Integer, primary_key=True)
-    nom = db.Column(db.String(100), nullable=False)
-    prenom = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(150), unique=True, nullable=False)
-    mot_de_passe_hash = db.Column(db.String(255), nullable=False)
-    telephone = db.Column(db.String(20))
-    adresse = db.Column(db.String(200))
-    ville = db.Column(db.String(100))
-    code_postal = db.Column(db.String(10))
-    role_id = db.Column(db.Integer, db.ForeignKey('role.id'), nullable=False)
-    role = db.relationship('Role', backref='utilisateurs')
-    actif = db.Column(db.Boolean, default=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+ROLES = ('utilisateur', 'employe', 'administrateur')
+
+
+class Utilisateur(Document, UserMixin):
+    meta = {'collection': 'utilisateur'}
+
+    nom = StringField(required=True, max_length=100)
+    prenom = StringField(required=True, max_length=100)
+    email = StringField(required=True, unique=True, max_length=150)
+    mot_de_passe_hash = StringField(required=True, max_length=255)
+    telephone = StringField(max_length=20)
+    adresse = StringField(max_length=200)
+    ville = StringField(max_length=100)
+    code_postal = StringField(max_length=10)
+    role = StringField(required=True, choices=ROLES, default='utilisateur')
+    actif = BooleanField(required=True, default=True)
+    created_at = DateTimeField(default=datetime.utcnow)
 
     def set_password(self, mot_de_passe: str):
         self.mot_de_passe_hash = bcrypt.hashpw(
@@ -66,11 +87,11 @@ class Utilisateur(db.Model, UserMixin):
 
     @property
     def est_admin(self):
-        return self.role.libelle == 'administrateur'
+        return self.role == 'administrateur'
 
     @property
     def est_employe(self):
-        return self.role.libelle in ('employe', 'administrateur')
+        return self.role in ('employe', 'administrateur')
 
     def get_id(self):
         return str(self.id)
@@ -80,87 +101,87 @@ class Utilisateur(db.Model, UserMixin):
 # Token de réinitialisation de mot de passe
 # ─────────────────────────────────────────────
 
-class TokenReinitialisation(db.Model):
-    __tablename__ = 'token_reinitialisation'
-    id = db.Column(db.Integer, primary_key=True)
-    utilisateur_id = db.Column(db.Integer, db.ForeignKey('utilisateur.id'), nullable=False)
-    utilisateur = db.relationship('Utilisateur', backref='tokens')
-    token = db.Column(db.String(200), unique=True, nullable=False)
-    expiration = db.Column(db.DateTime, nullable=False)
-    utilise = db.Column(db.Boolean, default=False)
+class TokenReinitialisation(Document):
+    meta = {
+        'collection': 'token_reinitialisation',
+        'indexes': [
+            # Index TTL : MongoDB supprime automatiquement le token à son expiration
+            {'fields': ['expiration'], 'expireAfterSeconds': 0},
+        ],
+    }
+
+    utilisateur = ReferenceField(Utilisateur, required=True, reverse_delete_rule=CASCADE)
+    token = StringField(required=True, unique=True, max_length=200)
+    expiration = DateTimeField(required=True)
+    utilise = BooleanField(default=False)
 
 
 # ─────────────────────────────────────────────
 # Référentiels : Thème, Régime, Allergène
 # ─────────────────────────────────────────────
 
-class Theme(db.Model):
-    __tablename__ = 'theme'
-    id = db.Column(db.Integer, primary_key=True)
-    libelle = db.Column(db.String(50), unique=True, nullable=False)
+class Theme(Document):
+    meta = {'collection': 'theme'}
+    libelle = StringField(required=True, unique=True, max_length=50)
     # 'Noël', 'Pâques', 'Classique', 'Événement'
 
 
-class Regime(db.Model):
-    __tablename__ = 'regime'
-    id = db.Column(db.Integer, primary_key=True)
-    libelle = db.Column(db.String(50), unique=True, nullable=False)
-    # 'Classique', 'Végétarien', 'Vegan', 'Sans gluten', 'Sans lactose'
+class Regime(Document):
+    meta = {'collection': 'regime'}
+    libelle = StringField(required=True, unique=True, max_length=50)
+    # 'Classique', 'Végétarien', 'Vegan', 'Sans gluten', 'Sans lactose', 'Halal'
 
 
-class Allergene(db.Model):
-    __tablename__ = 'allergene'
-    id = db.Column(db.Integer, primary_key=True)
-    libelle = db.Column(db.String(100), unique=True, nullable=False)
+class Allergene(Document):
+    meta = {'collection': 'allergene'}
+    libelle = StringField(required=True, unique=True, max_length=100)
 
 
 # ─────────────────────────────────────────────
 # Plat
 # ─────────────────────────────────────────────
 
-class Plat(db.Model):
-    __tablename__ = 'plat'
-    id = db.Column(db.Integer, primary_key=True)
-    titre = db.Column(db.String(200), nullable=False)
-    type_plat = db.Column(db.String(20), nullable=False)  # 'entree', 'plat', 'dessert'
-    description = db.Column(db.Text)
-    photo = db.Column(db.String(200))
-    allergenes = db.relationship('Allergene', secondary=plat_allergene, backref='plats')
+class Plat(Document):
+    meta = {'collection': 'plat'}
+
+    titre = StringField(required=True, max_length=200)
+    type_plat = StringField(required=True, choices=('entree', 'plat', 'dessert'))
+    description = StringField()
+    photo = StringField(max_length=200)
+    allergenes = ListField(ReferenceField(Allergene, reverse_delete_rule=PULL))
 
 
 # ─────────────────────────────────────────────
-# Image de menu
+# Menu (avec ses images embarquées)
 # ─────────────────────────────────────────────
 
-class ImageMenu(db.Model):
-    __tablename__ = 'image_menu'
-    id = db.Column(db.Integer, primary_key=True)
-    menu_id = db.Column(db.Integer, db.ForeignKey('menu.id', ondelete='CASCADE'), nullable=False)
-    chemin = db.Column(db.String(200), nullable=False)
+class ImageMenu(EmbeddedDocument):
+    # Identifiant propre : nécessaire pour supprimer une image précise depuis l'interface
+    id = ObjectIdField(default=ObjectId)
+    chemin = StringField(required=True, max_length=200)
 
 
-# ─────────────────────────────────────────────
-# Menu
-# ─────────────────────────────────────────────
+class Menu(Document):
+    meta = {
+        'collection': 'menu',
+        'indexes': ['actif', 'theme', 'regime', '-created_at'],
+    }
 
-class Menu(db.Model):
-    __tablename__ = 'menu'
-    id = db.Column(db.Integer, primary_key=True)
-    titre = db.Column(db.String(200), nullable=False)
-    description = db.Column(db.Text)
-    theme_id = db.Column(db.Integer, db.ForeignKey('theme.id'), nullable=False)
-    theme = db.relationship('Theme', backref='menus')
-    regime_id = db.Column(db.Integer, db.ForeignKey('regime.id'), nullable=False)
-    regime = db.relationship('Regime', backref='menus')
-    nb_personnes_min = db.Column(db.Integer, nullable=False)
-    prix_base = db.Column(db.Float, nullable=False)   # prix pour nb_personnes_min personnes
-    conditions = db.Column(db.Text)
-    stock = db.Column(db.Integer, default=0)
-    actif = db.Column(db.Boolean, default=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    titre = StringField(required=True, max_length=200)
+    description = StringField()
+    theme = ReferenceField(Theme, required=True, reverse_delete_rule=DENY)
+    regime = ReferenceField(Regime, required=True, reverse_delete_rule=DENY)
+    nb_personnes_min = IntField(required=True, min_value=1)
+    prix_base = FloatField(required=True, min_value=0)   # prix pour nb_personnes_min personnes
+    conditions = StringField()
+    # Pas de min_value : MongoEngine l'appliquerait aussi à l'opérande de dec__stock.
+    # Le stock reste >= 0 grâce au filtre `stock__gt=0` des décrémentations atomiques.
+    stock = IntField(default=0)
+    actif = BooleanField(required=True, default=True)
+    created_at = DateTimeField(default=datetime.utcnow)
 
-    plats = db.relationship('Plat', secondary=menu_plat, backref='menus')
-    images = db.relationship('ImageMenu', backref='menu', cascade='all, delete-orphan')
+    plats = ListField(ReferenceField(Plat, reverse_delete_rule=PULL))
+    images = EmbeddedDocumentListField(ImageMenu)
 
     @property
     def prix_par_personne(self):
@@ -190,7 +211,7 @@ class Menu(db.Model):
 
 
 # ─────────────────────────────────────────────
-# Commande
+# Commande (avec son historique de statuts embarqué)
 # ─────────────────────────────────────────────
 
 STATUTS_COMMANDE = [
@@ -205,31 +226,40 @@ STATUTS_COMMANDE = [
 ]
 
 
-class Commande(db.Model):
-    __tablename__ = 'commande'
-    id = db.Column(db.Integer, primary_key=True)
-    numero = db.Column(db.String(50), unique=True, nullable=False)
-    utilisateur_id = db.Column(db.Integer, db.ForeignKey('utilisateur.id'), nullable=False)
-    utilisateur = db.relationship('Utilisateur', backref='commandes')
-    menu_id = db.Column(db.Integer, db.ForeignKey('menu.id'), nullable=False)
-    menu = db.relationship('Menu', backref='commandes')
-    date_commande = db.Column(db.DateTime, default=datetime.utcnow)
-    date_prestation = db.Column(db.Date, nullable=False)
-    heure_livraison = db.Column(db.String(10), nullable=False)
-    adresse_livraison = db.Column(db.String(200), nullable=False)
-    ville_livraison = db.Column(db.String(100), nullable=False)
-    code_postal_livraison = db.Column(db.String(10))
-    nb_personnes = db.Column(db.Integer, nullable=False)
-    prix_menu = db.Column(db.Float, nullable=False)
-    prix_livraison = db.Column(db.Float, default=0.0)
-    prix_total = db.Column(db.Float, nullable=False)
-    statut = db.Column(db.String(50), default='en_attente', nullable=False)
-    pret_materiel = db.Column(db.Boolean, default=False)
-    motif_annulation = db.Column(db.Text)
-    mode_contact_annulation = db.Column(db.String(20))  # 'gsm' ou 'mail'
+class SuiviCommande(EmbeddedDocument):
+    statut = StringField(required=True, max_length=50)
+    date_modification = DateTimeField(default=datetime.utcnow)
 
-    suivis = db.relationship('SuiviCommande', backref='commande',
-                             cascade='all, delete-orphan', order_by='SuiviCommande.date_modification')
+    @property
+    def statut_libelle(self):
+        return dict(STATUTS_COMMANDE).get(self.statut, self.statut)
+
+
+class Commande(Document):
+    meta = {
+        'collection': 'commande',
+        'indexes': ['statut', 'utilisateur', '-date_commande'],
+    }
+
+    numero = StringField(required=True, unique=True, max_length=50)
+    utilisateur = ReferenceField(Utilisateur, required=True, reverse_delete_rule=DENY)
+    menu = ReferenceField(Menu, required=True, reverse_delete_rule=DENY)
+    date_commande = DateTimeField(default=datetime.utcnow)
+    date_prestation = DateField(required=True)
+    heure_livraison = StringField(required=True, max_length=10)
+    adresse_livraison = StringField(required=True, max_length=200)
+    ville_livraison = StringField(required=True, max_length=100)
+    code_postal_livraison = StringField(max_length=10)
+    nb_personnes = IntField(required=True, min_value=1)
+    prix_menu = FloatField(required=True)
+    prix_livraison = FloatField(default=0.0)
+    prix_total = FloatField(required=True)
+    statut = StringField(required=True, default='en_attente', max_length=50)
+    pret_materiel = BooleanField(default=False)
+    motif_annulation = StringField()
+    mode_contact_annulation = StringField(max_length=20)  # 'gsm' ou 'mail'
+
+    suivis = EmbeddedDocumentListField(SuiviCommande)
 
     @property
     def statut_libelle(self):
@@ -241,48 +271,44 @@ class Commande(db.Model):
 
     @property
     def avis_donne(self):
-        return len(self.avis) > 0
-
-
-class SuiviCommande(db.Model):
-    __tablename__ = 'suivi_commande'
-    id = db.Column(db.Integer, primary_key=True)
-    commande_id = db.Column(db.Integer, db.ForeignKey('commande.id', ondelete='CASCADE'), nullable=False)
-    statut = db.Column(db.String(50), nullable=False)
-    date_modification = db.Column(db.DateTime, default=datetime.utcnow)
-
-    @property
-    def statut_libelle(self):
-        return dict(STATUTS_COMMANDE).get(self.statut, self.statut)
+        return Avis.objects(commande=self).count() > 0
 
 
 # ─────────────────────────────────────────────
 # Avis
 # ─────────────────────────────────────────────
 
-class Avis(db.Model):
-    __tablename__ = 'avis'
-    id = db.Column(db.Integer, primary_key=True)
-    utilisateur_id = db.Column(db.Integer, db.ForeignKey('utilisateur.id'), nullable=False)
-    utilisateur = db.relationship('Utilisateur', backref='avis')
-    commande_id = db.Column(db.Integer, db.ForeignKey('commande.id'), nullable=False)
-    commande = db.relationship('Commande', backref='avis')
-    note = db.Column(db.Integer, nullable=False)  # 1 à 5
-    commentaire = db.Column(db.Text)
-    statut = db.Column(db.String(20), default='en_attente', nullable=False)
-    # 'en_attente', 'valide', 'refuse'
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+class Avis(Document):
+    meta = {
+        'collection': 'avis',
+        'indexes': [('statut', '-created_at')],
+    }
+
+    utilisateur = ReferenceField(Utilisateur, required=True, reverse_delete_rule=DENY)
+    # Unique : un seul avis par commande
+    commande = ReferenceField(Commande, required=True, unique=True, reverse_delete_rule=DENY)
+    note = IntField(required=True, min_value=1, max_value=5)
+    commentaire = StringField()
+    statut = StringField(required=True, default='en_attente',
+                         choices=('en_attente', 'valide', 'refuse'))
+    created_at = DateTimeField(default=datetime.utcnow)
 
 
 # ─────────────────────────────────────────────
 # Horaire
 # ─────────────────────────────────────────────
 
-class Horaire(db.Model):
-    __tablename__ = 'horaire'
-    id = db.Column(db.Integer, primary_key=True)
-    jour = db.Column(db.String(20), nullable=False)
+class Horaire(Document):
+    meta = {'collection': 'horaire', 'ordering': ['ordre']}
+
+    ordre = IntField(required=True, unique=True)   # 0 = lundi … 6 = dimanche
+    jour = StringField(required=True, unique=True, max_length=20)
     # 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'
-    heure_ouverture = db.Column(db.String(10))
-    heure_fermeture = db.Column(db.String(10))
-    ferme = db.Column(db.Boolean, default=False)
+    heure_ouverture = StringField(max_length=10)
+    heure_fermeture = StringField(max_length=10)
+    ferme = BooleanField(default=False)
+
+
+# Toutes les collections de l'application (utilisé par init_db.py)
+DOCUMENTS = (Utilisateur, TokenReinitialisation, Theme, Regime, Allergene,
+             Plat, Menu, Commande, Avis, Horaire)

@@ -77,7 +77,7 @@
     </div>
   </div>
 
-  <!-- Graphique MongoDB -->
+  <!-- Graphique des commandes par menu -->
   {% if stats_menus %}
   <div class="card border-0 shadow-sm">
     <div class="card-header fw-semibold">
@@ -96,8 +96,8 @@
 {% block scripts %}
 {% if stats_menus %}
 <script>
-const labels = {{ stats_menus | map(attribute='menu_titre') | list | tojson }};
-const data = {{ stats_menus | map(attribute='count') | list | tojson }};
+const labels = {{ stats_menus | map(attribute='titre') | list | tojson }};
+const data = {{ stats_menus | map(attribute='nb_commandes') | list | tojson }};
 
 new Chart(document.getElementById('graphiqueMenus'), {
   type: 'bar',

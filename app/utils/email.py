@@ -9,6 +9,11 @@ from flask import current_app
 logger = logging.getLogger('email_service')
 
 
+def _url(chemin: str) -> str:
+    """Construit une URL absolue à partir de APP_BASE_URL (.env)."""
+    return current_app.config['APP_BASE_URL'] + chemin
+
+
 def _log_email(destinataire: str, sujet: str, corps: str):
     """Écrit l'email simulé dans le fichier de logs et la console."""
     separateur = '─' * 60
@@ -74,7 +79,7 @@ def envoyer_commande_terminee(commande):
         f"Votre commande n°{commande.numero} est désormais terminée.\n\n"
         f"Nous espérons que votre événement s'est bien déroulé !\n\n"
         f"Connectez-vous à votre espace client pour nous laisser votre avis :\n"
-        f"http://localhost:5000/utilisateur/commandes\n\n"
+        f"{_url('/utilisateur/commandes')}\n\n"
         f"Merci de votre confiance,\nL'équipe Vite & Gourmand"
     )
     _log_email(u.email, f"Votre commande n°{commande.numero} est terminée — donnez votre avis !", corps)
@@ -99,7 +104,7 @@ def envoyer_compte_employe(employe, mot_de_passe_temp: str = None):
         f"Un compte employé Vite & Gourmand a été créé pour vous.\n\n"
         f"Identifiant (e-mail) : {employe.email}\n"
         f"Mot de passe         : [confidentiel – rapprochez-vous de l'administrateur]\n\n"
-        f"Connectez-vous sur : http://localhost:5000/auth/connexion\n\n"
+        f"Connectez-vous sur : {_url('/auth/connexion')}\n\n"
         f"L'équipe Vite & Gourmand"
     )
     _log_email(employe.email, "Votre compte employé Vite & Gourmand", corps)
@@ -112,4 +117,4 @@ def envoyer_contact(titre: str, description: str, email_expediteur: str):
         f"Titre   : {titre}\n\n"
         f"Message :\n{description}"
     )
-    _log_email("contact@viteetsourmand.fr", f"[Contact] {titre}", corps)
+    _log_email(current_app.config['CONTACT_EMAIL'], f"[Contact] {titre}", corps)

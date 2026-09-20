@@ -2,8 +2,11 @@ import os
 import uuid
 from flask import Blueprint, render_template, request, flash, redirect, url_for, abort, current_app
 from flask_login import current_user
-from ..models import (db, Menu, Plat, ImageMenu, Theme, Regime, Allergene,
-                      Horaire, Commande, SuiviCommande, Avis, STATUTS_COMMANDE)
+from mongoengine import Q
+from mongoengine.errors import OperationError
+from ..models import (Menu, Plat, ImageMenu, Theme, Regime, Allergene,
+                      Horaire, Commande, SuiviCommande, Avis, Utilisateur,
+                      STATUTS_COMMANDE, charger, charger_ou_404, convertir_ids)
 from ..utils.decorateurs import employe_requis
 from ..utils.email import envoyer_retour_materiel, envoyer_commande_terminee
 
@@ -29,8 +32,8 @@ def _sauvegarder_image(fichier) -> str:
 @bp.route('/')
 @employe_requis
 def dashboard():
-    nb_commandes_attente = Commande.query.filter_by(statut='en_attente').count()
-    nb_avis_attente = Avis.query.filter_by(statut='en_attente').count()
+    nb_commandes_attente = Commande.objects(statut='en_attente').count()
+    nb_avis_attente = Avis.objects(statut='en_attente').count()
     return render_template('employe/dashboard.html',
                            nb_commandes_attente=nb_commandes_attente,
                            nb_avis_attente=nb_avis_attente)
@@ -44,20 +47,16 @@ def commandes():
     statut = request.args.get('statut', '')
     client = request.args.get('client', '').strip()
 
-    query = Commande.query
-
+    filtres = {}
     if statut:
-        query = query.filter_by(statut=statut)
+        filtres['statut'] = statut
     if client:
-        from ..models import Utilisateur
-        sous_query = Utilisateur.query.filter(
-            (Utilisateur.nom.ilike(f'%{client}%')) |
-            (Utilisateur.prenom.ilike(f'%{client}%')) |
-            (Utilisateur.email.ilike(f'%{client}%'))
-        ).with_entities(Utilisateur.id)
-        query = query.filter(Commande.utilisateur_id.in_(sous_query))
+        clients = Utilisateur.objects(
+            Q(nom__icontains=client) | Q(prenom__icontains=client) | Q(email__icontains=client)
+        ).only('id')
+        filtres['utilisateur__in'] = list(clients)
 
-    commandes_liste = query.order_by(Commande.date_commande.desc()).all()
+    commandes_liste = list(Commande.objects(**filtres).order_by('-date_commande').select_related())
     return render_template('employe/commandes.html',
                            commandes=commandes_liste,
                            statuts=STATUTS_COMMANDE,
@@ -65,10 +64,10 @@ def commandes():
                            client_filtre=client)
 
 
-@bp.route('/commandes/<int:commande_id>/statut', methods=['POST'])
+@bp.route('/commandes/<commande_id>/statut', methods=['POST'])
 @employe_requis
 def changer_statut(commande_id):
-    commande = Commande.query.get_or_404(commande_id)
+    commande = charger_ou_404(Commande, commande_id)
     nouveau_statut = request.form.get('statut')
 
     statuts_valides = [s[0] for s in STATUTS_COMMANDE]
@@ -85,11 +84,12 @@ def changer_statut(commande_id):
             return redirect(url_for('employe.detail_commande', commande_id=commande_id))
         commande.motif_annulation = motif
         commande.mode_contact_annulation = mode_contact
-        commande.menu.stock += 1
+        if commande.statut != 'annulee':
+            Menu.objects(id=commande.menu.id).update_one(inc__stock=1)
 
     commande.statut = nouveau_statut
-    suivi = SuiviCommande(commande_id=commande.id, statut=nouveau_statut)
-    db.session.add(suivi)
+    commande.suivis.append(SuiviCommande(statut=nouveau_statut))
+    commande.save()
 
     # Notifications email selon statut
     if nouveau_statut == 'en_attente_materiel':
@@ -97,15 +97,14 @@ def changer_statut(commande_id):
     elif nouveau_statut == 'terminee':
         envoyer_commande_terminee(commande)
 
-    db.session.commit()
     flash("Statut de la commande mis à jour.", 'success')
     return redirect(url_for('employe.commandes'))
 
 
-@bp.route('/commandes/<int:commande_id>')
+@bp.route('/commandes/<commande_id>')
 @employe_requis
 def detail_commande(commande_id):
-    commande = Commande.query.get_or_404(commande_id)
+    commande = charger_ou_404(Commande, commande_id)
     return render_template('employe/detail_commande.html',
                            commande=commande,
                            statuts=STATUTS_COMMANDE)
@@ -116,7 +115,7 @@ def detail_commande(commande_id):
 @bp.route('/menus')
 @employe_requis
 def gestion_menus():
-    menus = Menu.query.order_by(Menu.created_at.desc()).all()
+    menus = list(Menu.objects.order_by('-created_at').select_related())
     return render_template('employe/menus/liste.html', menus=menus)
 
 
@@ -126,56 +125,55 @@ def nouveau_menu():
     return _form_menu()
 
 
-@bp.route('/menus/<int:menu_id>/modifier', methods=['GET', 'POST'])
+@bp.route('/menus/<menu_id>/modifier', methods=['GET', 'POST'])
 @employe_requis
 def modifier_menu(menu_id):
-    menu = Menu.query.get_or_404(menu_id)
+    menu = charger_ou_404(Menu, menu_id)
     return _form_menu(menu)
 
 
 def _form_menu(menu=None):
-    themes = Theme.query.order_by(Theme.libelle).all()
-    regimes = Regime.query.order_by(Regime.libelle).all()
-    plats_disponibles = Plat.query.order_by(Plat.type_plat, Plat.titre).all()
+    themes = list(Theme.objects.order_by('libelle'))
+    regimes = list(Regime.objects.order_by('libelle'))
+    plats_disponibles = list(Plat.objects.order_by('type_plat', 'titre').select_related())
 
     if request.method == 'POST':
         titre = request.form.get('titre', '').strip()
         description = request.form.get('description', '').strip()
-        theme_id = request.form.get('theme_id', type=int)
-        regime_id = request.form.get('regime_id', type=int)
+        theme = charger(Theme, request.form.get('theme_id', ''))
+        regime = charger(Regime, request.form.get('regime_id', ''))
         nb_personnes_min = request.form.get('nb_personnes_min', type=int, default=1)
         prix_base = request.form.get('prix_base', type=float, default=0.0)
         conditions = request.form.get('conditions', '').strip()
         stock = request.form.get('stock', type=int, default=0)
         actif = request.form.get('actif') == 'on'
-        plats_ids = request.form.getlist('plats', type=int)
+        plats_ids = convertir_ids(request.form.getlist('plats'))
 
-        if not titre or not theme_id or not regime_id or nb_personnes_min < 1 or prix_base <= 0:
+        if not titre or not theme or not regime or nb_personnes_min < 1 or prix_base <= 0 or stock < 0:
             flash("Veuillez remplir tous les champs obligatoires.", 'danger')
         else:
             if menu is None:
                 menu = Menu()
-                db.session.add(menu)
 
             menu.titre = titre
             menu.description = description
-            menu.theme_id = theme_id
-            menu.regime_id = regime_id
+            menu.theme = theme
+            menu.regime = regime
             menu.nb_personnes_min = nb_personnes_min
             menu.prix_base = prix_base
             menu.conditions = conditions
             menu.stock = stock
             menu.actif = actif
-            menu.plats = Plat.query.filter(Plat.id.in_(plats_ids)).all()
+            menu.plats = list(Plat.objects(id__in=plats_ids))
 
             # Images
             images = request.files.getlist('images')
             for img in images:
                 if img and img.filename and _extension_autorisee(img.filename):
                     chemin = _sauvegarder_image(img)
-                    db.session.add(ImageMenu(menu=menu, chemin=chemin))
+                    menu.images.append(ImageMenu(chemin=chemin))
 
-            db.session.commit()
+            menu.save()
             flash("Menu enregistré avec succès.", 'success')
             return redirect(url_for('employe.gestion_menus'))
 
@@ -186,33 +184,39 @@ def _form_menu(menu=None):
                            plats_disponibles=plats_disponibles)
 
 
-@bp.route('/menus/<int:menu_id>/supprimer', methods=['POST'])
+@bp.route('/menus/<menu_id>/supprimer', methods=['POST'])
 @employe_requis
 def supprimer_menu(menu_id):
-    menu = Menu.query.get_or_404(menu_id)
-    if Commande.query.filter_by(menu_id=menu_id, statut='en_attente').count() > 0:
+    menu = charger_ou_404(Menu, menu_id)
+    if Commande.objects(menu=menu, statut='en_attente').count() > 0:
         flash("Impossible de supprimer un menu ayant des commandes en attente.", 'warning')
         return redirect(url_for('employe.gestion_menus'))
-    db.session.delete(menu)
-    db.session.commit()
+    try:
+        menu.delete()
+    except OperationError:
+        # reverse_delete_rule=DENY : le menu est référencé par des commandes existantes
+        flash("Impossible de supprimer un menu ayant déjà été commandé. "
+              "Désactivez-le plutôt (case « actif »).", 'warning')
+        return redirect(url_for('employe.gestion_menus'))
     flash("Menu supprimé.", 'info')
     return redirect(url_for('employe.gestion_menus'))
 
 
-@bp.route('/menus/<int:menu_id>/images/<int:image_id>/supprimer', methods=['POST'])
+@bp.route('/menus/<menu_id>/images/<image_id>/supprimer', methods=['POST'])
 @employe_requis
 def supprimer_image(menu_id, image_id):
-    image = ImageMenu.query.get_or_404(image_id)
-    if image.menu_id != menu_id:
-        abort(403)
+    menu = charger_ou_404(Menu, menu_id)
+    image = next((i for i in menu.images if str(i.id) == image_id), None)
+    if image is None:
+        abort(404)
     try:
         chemin_complet = os.path.join(current_app.root_path, 'static', image.chemin)
         if os.path.exists(chemin_complet):
             os.remove(chemin_complet)
     except Exception:
         pass
-    db.session.delete(image)
-    db.session.commit()
+    menu.images.remove(image)
+    menu.save()
     flash("Image supprimée.", 'info')
     return redirect(url_for('employe.modifier_menu', menu_id=menu_id))
 
@@ -222,7 +226,7 @@ def supprimer_image(menu_id, image_id):
 @bp.route('/plats')
 @employe_requis
 def gestion_plats():
-    plats = Plat.query.order_by(Plat.type_plat, Plat.titre).all()
+    plats = list(Plat.objects.order_by('type_plat', 'titre').select_related())
     return render_template('employe/plats/liste.html', plats=plats)
 
 
@@ -232,33 +236,32 @@ def nouveau_plat():
     return _form_plat()
 
 
-@bp.route('/plats/<int:plat_id>/modifier', methods=['GET', 'POST'])
+@bp.route('/plats/<plat_id>/modifier', methods=['GET', 'POST'])
 @employe_requis
 def modifier_plat(plat_id):
-    plat = Plat.query.get_or_404(plat_id)
+    plat = charger_ou_404(Plat, plat_id)
     return _form_plat(plat)
 
 
 def _form_plat(plat=None):
-    allergenes_liste = Allergene.query.order_by(Allergene.libelle).all()
+    allergenes_liste = list(Allergene.objects.order_by('libelle'))
 
     if request.method == 'POST':
         titre = request.form.get('titre', '').strip()
         type_plat = request.form.get('type_plat', '').strip()
         description = request.form.get('description', '').strip()
-        allergenes_ids = request.form.getlist('allergenes', type=int)
+        allergenes_ids = convertir_ids(request.form.getlist('allergenes'))
 
         if not titre or type_plat not in ('entree', 'plat', 'dessert'):
             flash("Veuillez remplir les champs obligatoires.", 'danger')
         else:
             if plat is None:
                 plat = Plat()
-                db.session.add(plat)
 
             plat.titre = titre
             plat.type_plat = type_plat
             plat.description = description
-            plat.allergenes = Allergene.query.filter(Allergene.id.in_(allergenes_ids)).all()
+            plat.allergenes = list(Allergene.objects(id__in=allergenes_ids))
 
             # Photo
             photo = request.files.get('photo')
@@ -266,7 +269,7 @@ def _form_plat(plat=None):
                 chemin = _sauvegarder_image(photo)
                 plat.photo = chemin
 
-            db.session.commit()
+            plat.save()
             flash("Plat enregistré.", 'success')
             return redirect(url_for('employe.gestion_plats'))
 
@@ -275,12 +278,11 @@ def _form_plat(plat=None):
                            allergenes_liste=allergenes_liste)
 
 
-@bp.route('/plats/<int:plat_id>/supprimer', methods=['POST'])
+@bp.route('/plats/<plat_id>/supprimer', methods=['POST'])
 @employe_requis
 def supprimer_plat(plat_id):
-    plat = Plat.query.get_or_404(plat_id)
-    db.session.delete(plat)
-    db.session.commit()
+    plat = charger_ou_404(Plat, plat_id)
+    plat.delete()
     flash("Plat supprimé.", 'info')
     return redirect(url_for('employe.gestion_plats'))
 
@@ -291,17 +293,17 @@ def supprimer_plat(plat_id):
 @employe_requis
 def horaires():
     if request.method == 'POST':
-        for horaire in Horaire.query.all():
+        for horaire in Horaire.objects:
             ferme = request.form.get(f'ferme_{horaire.id}') == 'on'
             horaire.ferme = ferme
             if not ferme:
                 horaire.heure_ouverture = request.form.get(f'ouverture_{horaire.id}', '').strip() or None
                 horaire.heure_fermeture = request.form.get(f'fermeture_{horaire.id}', '').strip() or None
-        db.session.commit()
+            horaire.save()
         flash("Horaires mis à jour.", 'success')
         return redirect(url_for('employe.horaires'))
 
-    horaires_liste = Horaire.query.order_by(Horaire.id).all()
+    horaires_liste = list(Horaire.objects)
     return render_template('employe/horaires.html', horaires=horaires_liste)
 
 
@@ -311,25 +313,25 @@ def horaires():
 @employe_requis
 def gestion_avis():
     statut = request.args.get('statut', 'en_attente')
-    avis_liste = Avis.query.filter_by(statut=statut).order_by(Avis.created_at.desc()).all()
+    avis_liste = list(Avis.objects(statut=statut).order_by('-created_at').select_related())
     return render_template('employe/avis.html', avis=avis_liste, statut=statut)
 
 
-@bp.route('/avis/<int:avis_id>/valider', methods=['POST'])
+@bp.route('/avis/<avis_id>/valider', methods=['POST'])
 @employe_requis
 def valider_avis(avis_id):
-    avis = Avis.query.get_or_404(avis_id)
+    avis = charger_ou_404(Avis, avis_id)
     avis.statut = 'valide'
-    db.session.commit()
+    avis.save()
     flash("Avis validé et publié.", 'success')
     return redirect(url_for('employe.gestion_avis'))
 
 
-@bp.route('/avis/<int:avis_id>/refuser', methods=['POST'])
+@bp.route('/avis/<avis_id>/refuser', methods=['POST'])
 @employe_requis
 def refuser_avis(avis_id):
-    avis = Avis.query.get_or_404(avis_id)
+    avis = charger_ou_404(Avis, avis_id)
     avis.statut = 'refuse'
-    db.session.commit()
+    avis.save()
     flash("Avis refusé.", 'info')
     return redirect(url_for('employe.gestion_avis'))

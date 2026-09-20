@@ -1,20 +1,19 @@
 import uuid
 from datetime import date
-from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
+from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify, current_app
 from flask_login import current_user, login_required
-from ..models import db, Commande, SuiviCommande, Menu
+from ..models import Commande, SuiviCommande, Menu, charger
 from ..utils.email import envoyer_confirmation_commande
 
 bp = Blueprint('commandes', __name__)
 
-BORDEAUX_KEYWORDS = {'bordeaux', 'bordeaux cedex', 'bordeaux-cedex'}
-
-
 def _calculer_livraison(ville: str) -> float:
-    """Retourne 0€ si la ville est Bordeaux, sinon 15€ (forfait simplifié)."""
-    if ville.strip().lower() in BORDEAUX_KEYWORDS:
+    """Livraison gratuite dans la ville configurée (Bordeaux), sinon forfait fixe (.env)."""
+    ville_gratuite = current_app.config['VILLE_LIVRAISON_GRATUITE'].strip().lower()
+    villes_gratuites = {ville_gratuite, f'{ville_gratuite} cedex', f'{ville_gratuite}-cedex'}
+    if ville.strip().lower() in villes_gratuites:
         return 0.0
-    return 15.0
+    return current_app.config['FRAIS_LIVRAISON_HORS_ZONE']
 
 
 def _generer_numero() -> str:
@@ -24,12 +23,12 @@ def _generer_numero() -> str:
 @bp.route('/commander', methods=['GET', 'POST'])
 @login_required
 def commander():
-    menus_actifs = Menu.query.filter_by(actif=True).filter(Menu.stock > 0).order_by(Menu.titre).all()
-    menu_preselectionne_id = request.args.get('menu_id', type=int)
+    menus_actifs = list(Menu.objects(actif=True, stock__gt=0).order_by('titre'))
+    menu_preselectionne_id = request.args.get('menu_id', '')
 
     if request.method == 'POST':
-        menu_id = request.form.get('menu_id', type=int)
-        menu = Menu.query.get(menu_id)
+        menu_id = request.form.get('menu_id', '')
+        menu = charger(Menu, menu_id)
 
         if not menu or not menu.actif:
             flash("Menu introuvable.", 'danger')
@@ -82,10 +81,16 @@ def commander():
         prix_livraison = _calculer_livraison(ville)
         prix_total = round(prix_menu + prix_livraison, 2)
 
+        # Réservation atomique du stock : évite la survente si deux clients
+        # commandent le dernier exemplaire en même temps.
+        if not Menu.objects(id=menu.id, stock__gt=0).update_one(dec__stock=1):
+            flash("Ce menu n'est plus disponible (stock épuisé).", 'danger')
+            return redirect(url_for('commandes.commander'))
+
         commande = Commande(
             numero=_generer_numero(),
-            utilisateur_id=current_user.id,
-            menu_id=menu.id,
+            utilisateur=current_user._get_current_object(),
+            menu=menu,
             date_prestation=date_prest,
             heure_livraison=heure,
             adresse_livraison=adresse,
@@ -96,36 +101,16 @@ def commander():
             prix_livraison=prix_livraison,
             prix_total=prix_total,
             statut='en_attente',
-            pret_materiel=pret_materiel
+            pret_materiel=pret_materiel,
+            suivis=[SuiviCommande(statut='en_attente')],
         )
-        db.session.add(commande)
-        db.session.flush()
-
-        suivi = SuiviCommande(commande_id=commande.id, statut='en_attente')
-        db.session.add(suivi)
-
-        # Décrémentation du stock
-        menu.stock -= 1
-
-        # Mise à jour stats MongoDB
         try:
-            from flask import current_app
-            from pymongo import MongoClient
-            client = MongoClient(current_app.config['MONGO_URI'])
-            mongo_db = client[current_app.config['MONGO_DBNAME']]
-            mongo_db.stats_commandes.update_one(
-                {'menu_id': menu.id},
-                {
-                    '$inc': {'count': 1, 'chiffre_affaires': prix_total},
-                    '$set': {'menu_titre': menu.titre}
-                },
-                upsert=True
-            )
-            client.close()
+            commande.save()
         except Exception:
-            pass  # MongoDB non critique
+            # Échec de l'enregistrement : on rend le stock réservé
+            Menu.objects(id=menu.id).update_one(inc__stock=1)
+            raise
 
-        db.session.commit()
         envoyer_confirmation_commande(commande)
         flash(f"Votre commande n°{commande.numero} a bien été enregistrée !", 'success')
         return redirect(url_for('utilisateur.mes_commandes'))
@@ -139,11 +124,11 @@ def commander():
 @login_required
 def api_prix():
     """Calcule le prix en temps réel (AJAX)."""
-    menu_id = request.args.get('menu_id', type=int)
+    menu_id = request.args.get('menu_id', '')
     nb_personnes = request.args.get('nb_personnes', type=int, default=0)
     ville = request.args.get('ville', '')
 
-    menu = Menu.query.get(menu_id)
+    menu = charger(Menu, menu_id)
     if not menu:
         return jsonify({'erreur': 'Menu introuvable'}), 404
 
